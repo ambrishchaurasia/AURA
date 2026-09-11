@@ -1,0 +1,94 @@
+{
+  "application": "notepad",
+  "version": "1.0",
+  "elements": {
+    "text_editor": {
+      "identifiers": {
+        "name": "Text editor",
+        "control_type": "Document",
+        "class_name": "RichEditD2DPT"
+      },
+      "alternatives": [
+        {
+          "control_type": "Edit"
+        }
+      ],
+      "actions": [
+        "type",
+        "read",
+        "select_all",
+        "copy",
+        "paste"
+      ]
+    },
+    "file_menu": {
+      "identifiers": {
+        "name": "File",
+        "control_type": "MenuItem",
+        "automation_id": "File"
+      },
+      "actions": [
+        "click"
+      ]
+    },
+    "edit_menu": {
+      "identifiers": {
+        "name": "Edit",
+        "control_type": "MenuItem",
+        "automation_id": "Edit"
+      },
+      "actions": [
+        "click"
+      ]
+    },
+    "settings_button": {
+      "identifiers": {
+        "name": "Settings",
+        "control_type": "Button",
+        "automation_id": "SettingsButton"
+      },
+      "actions": [
+        "click"
+      ]
+    },
+    "save_dialog": {
+      "identifiers": {
+        "name": "Save As",
+        "control_type": "Window"
+      },
+      "actions": []
+    },
+    "filename_input": {
+      "identifiers": {
+        "automation_id": "FileNameControlHost"
+      },
+      "alternatives": [
+        {
+          "name": "File name",
+          "control_type": "Edit"
+        }
+      ],
+      "actions": [
+        "type"
+      ]
+    },
+    "save_button": {
+      "identifiers": {
+        "name": "Save",
+        "control_type": "Button"
+      },
+      "actions": [
+        "click"
+      ]
+    },
+    "dont_save_button": {
+      "identifiers": {
+        "name": "Don't Save",
+        "control_type": "Button"
+      },
+      "actions": [
+        "click"
+      ]
+    }
+  }
+}
