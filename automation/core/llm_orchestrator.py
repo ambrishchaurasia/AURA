@@ -48,45 +48,59 @@ Format:
     def plan(self, prompt: str) -> dict:
         """
         Sends the user prompt to Gemini and parses the resulting JSON.
-        Returns a list of action dictionaries.
+        Retries automatically on 429/503 errors.
         """
-        try:
-            response = self.client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    system_instruction=self.system_instruction,
-                    temperature=0.0
+        max_retries = 4
+        response = None
+        for attempt in range(max_retries):
+            try:
+                response = self.client.models.generate_content(
+                    model="models/gemini-3.5-flash-lite",
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        system_instruction=self.system_instruction,
+                        temperature=0.0
+                    )
                 )
-            )
-            
-            # Extract text from response
+                break  # Success
+            except Exception as e:
+                err_str = str(e)
+                if ("429" in err_str or "503" in err_str or "RESOURCE_EXHAUSTED" in err_str or "UNAVAILABLE" in err_str) and attempt < max_retries - 1:
+                    import time
+                    wait_secs = 2 ** attempt  # 1s, 2s, 4s
+                    print(f"[LLMOrchestrator] API busy (attempt {attempt+1}/{max_retries}). Retrying in {wait_secs}s...")
+                    time.sleep(wait_secs)
+                else:
+                    print(f"[LLMOrchestrator] API Error: {e}")
+                    return {"message": f"API Error: {e}", "actions": []}
+
+        if response is None:
+            return {"message": "API unavailable after retries.", "actions": []}
+
+        try:
             text = response.text.strip()
-            
-            # Clean up markdown code blocks if the model accidentally includes them
+            # Clean up markdown code blocks if model accidentally includes them
             if text.startswith("```json"):
                 text = text[7:]
             if text.startswith("```"):
                 text = text[3:]
             if text.endswith("```"):
                 text = text[:-3]
-            
             text = text.strip()
-            
+
             response_data = json.loads(text)
             if not isinstance(response_data, dict):
                 print(f"[LLMOrchestrator] Error: LLM returned non-dict JSON: {response_data}")
                 return {"message": "Invalid response format from LLM.", "actions": []}
-                
             return response_data
-            
+
         except json.JSONDecodeError as e:
             print(f"[LLMOrchestrator] JSON Parse Error: {e}")
             print(f"[LLMOrchestrator] Raw Response: {response.text}")
-            return {"message": "Failed to understand the response.", "actions": []}
+            return {"message": "Failed to parse LLM response.", "actions": []}
         except Exception as e:
-            print(f"[LLMOrchestrator] API Error: {e}")
-            return {"message": f"API Error: {e}", "actions": []}
+            print(f"[LLMOrchestrator] Error: {e}")
+            return {"message": f"Error: {e}", "actions": []}
 
 if __name__ == "__main__":
     # Quick test

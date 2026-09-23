@@ -1,0 +1,164 @@
+{
+  "app_name": "browser",
+  "app_version": "Playwright DOM v1",
+  "last_crawled": "2026-09-11",
+  "nodes": [
+    {
+      "id": "login_page",
+      "control_type": "Page",
+      "url": "https://myupes-beta.upes.ac.in/oneportal/app/auth/login",
+      "children": [
+        "username_input",
+        "password_input",
+        "captcha_checkbox",
+        "login_button"
+      ]
+    },
+    {
+      "id": "username_input",
+      "control_type": "Input",
+      "selector": "input[placeholder='Enter a valid user name']"
+    },
+    {
+      "id": "password_input",
+      "control_type": "Input",
+      "selector": "input[placeholder='Enter password']"
+    },
+    {
+      "id": "captcha_checkbox",
+      "control_type": "Checkbox",
+      "selector": "iframe[title='reCAPTCHA'] >> .recaptcha-checkbox-border"
+    },
+    {
+      "id": "login_button",
+      "control_type": "Button",
+      "selector": "button.btn-primary-theme"
+    },
+    {
+      "id": "dashboard_page",
+      "control_type": "Page",
+      "children": [
+        "tickets_link",
+        "schedule_link",
+        "attendance_link"
+      ]
+    },
+    {
+      "id": "tickets_link",
+      "control_type": "Link",
+      "selector": "a[href*='/connectportal/user/student/collaboration/servicerequest']"
+    },
+    {
+      "id": "schedule_link",
+      "control_type": "Link",
+      "selector": "a.session-link"
+    },
+    {
+      "id": "attendance_link",
+      "control_type": "Link",
+      "selector": "a[href*='/connectportal/user/student/student-attendance']"
+    },
+    {
+      "id": "ticket_creation_page",
+      "control_type": "Page",
+      "children": [
+        "create_request_button",
+        "ticket_department_dropdown",
+        "ticket_category_dropdown",
+        "ticket_subcategory_dropdown",
+        "ticket_short_desc_input",
+        "ticket_desc_input",
+        "ticket_submit"
+      ]
+    },
+    {
+      "id": "create_request_button",
+      "control_type": "Button",
+      "selector": "button:has-text('Create Request')"
+    },
+    {
+      "id": "ticket_department_dropdown",
+      "control_type": "KendoDropdown",
+      "selector": "button.k-input-button >> nth=1"
+    },
+    {
+      "id": "ticket_category_dropdown",
+      "control_type": "KendoDropdown",
+      "selector": "button.k-input-button >> nth=2"
+    },
+    {
+      "id": "ticket_subcategory_dropdown",
+      "control_type": "KendoDropdown",
+      "selector": "button.k-input-button >> nth=3"
+    },
+    {
+      "id": "ticket_short_desc_input",
+      "control_type": "Input",
+      "selector": "input[name='short_description']"
+    },
+    {
+      "id": "ticket_desc_input",
+      "control_type": "Input",
+      "selector": "textarea[name='description']"
+    },
+    {
+      "id": "ticket_submit",
+      "control_type": "Button",
+      "selector": "button:has-text('Submit')"
+    }
+  ],
+  "feature_index": {
+    "search web": {
+      "path": [
+        "brave_search"
+      ],
+      "description": "Perform web search via Brave API"
+    },
+    "myupes login": {
+      "path": [
+        "login_page",
+        "username_input",
+        "password_input",
+        "captcha_checkbox",
+        "login_button"
+      ],
+      "required_data": [
+        "username",
+        "password"
+      ]
+    },
+    "myupes check attendance": {
+      "path": [
+        "dashboard_page",
+        "attendance_link"
+      ]
+    },
+    "myupes add classes to calendar": {
+      "path": [
+        "dashboard_page",
+        "schedule_link"
+      ]
+    },
+    "myupes create ticket": {
+      "path": [
+        "dashboard_page",
+        "tickets_link",
+        "ticket_creation_page",
+        "create_request_button",
+        "ticket_department_dropdown",
+        "ticket_category_dropdown",
+        "ticket_subcategory_dropdown",
+        "ticket_short_desc_input",
+        "ticket_desc_input",
+        "ticket_submit"
+      ],
+      "required_data": [
+        "department",
+        "category",
+        "sub_category",
+        "short_description",
+        "description"
+      ]
+    }
+  }
+}
