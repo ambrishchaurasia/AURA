@@ -60,13 +60,16 @@ def restart_radio(kind):
     return _run(_restart(kind))
 
 
-async def _find_device(name):
+async def _find_device(name, scan):
     from winrt.windows.devices.enumeration import DeviceInformation, DeviceInformationKind
     from winrt.system import unbox_boolean
     state = await _state('bluetooth')
     if state['radio_state'] != 'on':
         raise ActionError('Bluetooth is off, so AURA cannot check for a nearby device.')
     selector = 'System.Devices.Aep.ProtocolId:="{e0cbf06c-cd8b-4647-bb8a-263b43f0f974}"'
+    if not scan:  # Skip the ~30 s radio inquiry: paired devices only, presence as Windows last saw it.
+        selector += (' AND (System.Devices.Aep.IsPaired:=System.StructuredQueryType.Boolean#True'
+                     ' OR System.Devices.Aep.Bluetooth.IssueInquiry:=System.StructuredQueryType.Boolean#False)')
     properties = ['System.Devices.Aep.IsPresent', 'System.Devices.Aep.IsConnected']
     try:
         devices = await DeviceInformation.find_all_async_with_kind_aqs_filter_and_additional_properties(
@@ -84,9 +87,9 @@ async def _find_device(name):
                         'connected': unbox_boolean(connected) if connected else False,
                         'paired': bool(device.pairing and device.pairing.is_paired)})
     return {'radio_state': state['radio_state'], 'device_name': name, 'matches': matches,
-            'nearby': any(item['present'] or item['connected'] for item in matches)}
+            'nearby': any(item['present'] or item['connected'] for item in matches), 'scanned': scan}
 
 
-def find_bluetooth_device(name=''):
+def find_bluetooth_device(name='', scan=False):
     """Empty name lists every known Bluetooth device."""
-    return _run(_find_device(name))
+    return _run(_find_device(name, scan))

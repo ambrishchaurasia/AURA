@@ -147,9 +147,19 @@ def _describe(control):
     return item
 
 
+def _in_nav(control):
+    """Left navigation and breadcrumb: listed by neither read_page nor needed there, but still clickable."""
+    while control := control.GetParentControl():
+        if control.AutomationId in ('MenuItemsHost', 'PermanentNavigationViewBreadcrumbBar'):
+            return True
+    return False
+
+
 def read_page():
     seen, items = set(), []
     for control in _controls():
+        if _in_nav(control):
+            continue
         item = _describe(control)
         # Group containers are only interesting when they are the toggle themselves.
         if item['type'] == 'Group' and 'state' not in item:

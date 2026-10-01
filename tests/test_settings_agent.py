@@ -1,12 +1,13 @@
 """Offline checks for the settings agent: run with `python -m pytest tests` from the repo root."""
 import asyncio
+import ctypes as ct
 import sys
 import types
 
 import pytest
 
 from automation.agents.settings_agent import ACTIONS, SettingsAgent
-from automation.agents.settings_ops import ActionError, radios, ui
+from automation.agents.settings_ops import ActionError, displays, radios, system, ui
 
 
 class FakeRadio:
@@ -74,3 +75,16 @@ def test_agent_contract_and_irreversible_guard(monkeypatch):
     assert agent.execute('nope')['status'] == 'failure'
     assert ui.RISKY.search('Reset PC') and ui.RISKY.search('Remove device') and not ui.RISKY.search('Add device')
     assert radios.LABELS.keys() == {'bluetooth', 'wifi'}
+
+
+def test_refresh_rate_refuses_unsupported_and_audio_name_must_be_unique(monkeypatch):
+    mode = {'width': 1920, 'height': 1080, 'bits_per_pixel': 32, 'nominal_hz': 60}
+    display = {'display_id': 'd', 'device_name': 'DISPLAY1', 'remote': False, 'primary': True, 'monitors': [{'name': 'M', 'interface_id': 'x'}],
+               'current': mode, 'compatible_nominal_hz': [60, 144], 'active_timing': {'status': 'unavailable'}, 'alternate_modes': {}}
+    monkeypatch.setattr(displays, 'read_displays', lambda check: {'displays': [display], 'rate_precision': ''})
+    refused = SettingsAgent().execute('set_refresh_rate', {'display_id': 'd', 'nominal_hz': 75})
+    assert refused['status'] == 'failure' and '75 Hz is not available' in refused['details']
+    monkeypatch.setattr(system, '_devices', lambda enumerator: [('1', 'Speakers (A)', True), ('2', 'Speakers (B)', False)])
+    monkeypatch.setattr(system, '_create', lambda clsid, iid: ct.c_void_p())
+    ambiguous = SettingsAgent().execute('set_audio_device', {'name': 'speakers'})
+    assert ambiguous['status'] == 'failure' and 'Speakers (B)' in ambiguous['details']
