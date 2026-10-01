@@ -1,10 +1,15 @@
 """
 Shared MyUPES portal session, kept alive as one signed-in browser.
 
-The MyUPES sign-in does not survive a browser restart, and signing in to MyUPES elsewhere appears to end this
-session, so AURA keeps one browser alive and works in its own tabs. `login` starts a normal Chrome/Edge that stays running; the
-person signs in there and every later run attaches to that same tab over CDP. Nothing here types
-credentials or solves the CAPTCHA: it only waits for the person.
+The MyUPES sign-in does not survive a browser restart, and a fresh page load or sign-in elsewhere appears to end it.
+So there is one live browser, one tab, and in-app routing only (`route`): never a full page load. `login` starts a
+normal Chrome/Edge that stays running; the person signs in there and every later run attaches to that same tab over
+CDP. Nothing here types credentials or solves the CAPTCHA: it only waits for the person.
+
+The sign-in dies after ~13 minutes when the signed-in tab is idle (a dead tab keeps showing the old page). Every
+open_portal therefore does a small in-app route change in that tab (`_nudge`), which both refreshes the idle timer and
+proves the session is alive. `keepalive` must run every 5 minutes or less. Opening other MyUPES tabs or signing in
+again in that browser can end the session.
 
     python -m automation.agents.portal_session login|status|keepalive|stop
 """
@@ -26,8 +31,9 @@ from playwright.sync_api import sync_playwright
 
 LOGIN_URL = "https://myupes-beta.upes.ac.in/oneportal/app/auth/login"
 DASHBOARD_URL = "https://myupes-beta.upes.ac.in/oneportal/app/dashboard"
-HOME_URL = "https://myupes-beta.upes.ac.in/connectportal/user/student/home/dashboard"
 HOST = "myupes-beta.upes.ac.in"
+SCHEDULE_ROUTE = "/connectportal/user/student/curriculum-scheduling"
+DASHBOARD_ROUTE = "/connectportal/user/student/home/dashboard"
 
 
 def _dir() -> pathlib.Path:
@@ -38,6 +44,10 @@ def _dir() -> pathlib.Path:
 
 def _status_file() -> pathlib.Path:
     return _dir() / "myupes_status.json"
+
+
+class PortalBusy(Exception):
+    pass
 
 
 class LoginRequired(Exception):
@@ -111,6 +121,35 @@ def is_authenticated(page) -> bool:
         return False
 
 
+def route(page, path) -> None:
+    """The only allowed way to move around the portal: an in-app route change, never a page load.
+    Raises LoginRequired if the portal bounces the tab to /auth/."""
+    page.evaluate("(u)=>{history.pushState({},'',u);dispatchEvent(new PopStateEvent('popstate'))}", path)
+    page.wait_for_timeout(1500)
+    if "/auth/" in page.url:
+        _record(False)
+        raise LoginRequired()
+
+
+def _nudge(page) -> bool:
+    """In-app route changes in the signed-in tab; it always ends on the dashboard. True only if it stays off /auth/ and
+    the app's own XHR/fetch calls succeed. URL/DOM checks alone cannot tell: a dead tab keeps showing the old page."""
+    ok = []
+    seen = lambda r: ok.append(1) if r.request.resource_type in ("xhr", "fetch") and r.status < 400 else None
+    page.on("response", seen)
+    try:
+        if DASHBOARD_ROUTE in page.url:
+            route(page, SCHEDULE_ROUTE)
+            page.wait_for_timeout(6000)
+        route(page, DASHBOARD_ROUTE)
+        page.wait_for_timeout(6000)
+    except Exception:
+        return False
+    finally:
+        page.remove_listener("response", seen)
+    return bool(ok) and "/auth/" not in page.url
+
+
 def _browser_exe() -> str:
     env = os.environ.get
     for base, rel in [(env("PROGRAMFILES"), r"Google\Chrome\Application\chrome.exe"),
@@ -180,7 +219,7 @@ def _human_login(playwright, timeout):
             has_tab = True
         if not has_tab:
             urlopen(Request(f"http://127.0.0.1:{port}/json/new?{LOGIN_URL}", method="PUT"), timeout=5).close()
-    print("[Portal] Sign in to MyUPES in the browser window, then leave that window open (minimise it). Do not close it or sign in to MyUPES elsewhere.")
+    print("[Portal] Sign in to MyUPES in the browser window, then leave that window alone (minimise it). Do not close it, refresh it, or open MyUPES in other tabs.")
     deadline = time.monotonic() + timeout
     while True:
         while True:
@@ -211,49 +250,67 @@ def _human_login(playwright, timeout):
     return browser, page
 
 
+def _lock_file() -> pathlib.Path:
+    return _dir() / "myupes_tab.lock"
+
+
 @contextmanager
-def open_portal(playwright, *, interactive=False, login_timeout=600, work_tab=True):
-    """Yield a fresh tab on the student dashboard; raise LoginRequired if a human sign-in is needed and not allowed/completed.
-    Callers may navigate the yielded tab freely; it is closed on exit."""
-    # Each action gets its own tab, so actions do not disturb each other or the signed-in tab.
-    page = None
-    port = _live_port()
-    if port is not None:
-        page = _portal_page(playwright.chromium.connect_over_cdp(f"http://127.0.0.1:{port}"))
-    if page and is_authenticated(page):
-        _record(True)
-    elif not interactive:
-        _record(False)
-        raise LoginRequired()
-    else:
-        page = _human_login(playwright, login_timeout)[1]
-    if not work_tab:
-        yield page  # the signed-in tab itself; callers must not navigate it
-        return
-    work = page.context.new_page()
+def _tab_lock():
+    """Cross-process lock so two actions never drive the tab at once; a lock older than 5 minutes is stale."""
+    path = _lock_file()
     try:
-        work.goto(HOME_URL)
-        if not is_authenticated(work):
+        fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError:
+        try:
+            fresh = time.time() - path.stat().st_mtime < 300
+        except OSError:
+            fresh = False
+        if fresh:
+            raise PortalBusy("Another MyUPES action is running; try again shortly.") from None
+        path.unlink(missing_ok=True)
+        try:
+            fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            raise PortalBusy("Another MyUPES action is running; try again shortly.") from None
+    os.close(fd)
+    try:
+        yield
+    finally:
+        path.unlink(missing_ok=True)
+
+
+@contextmanager
+def open_portal(playwright, *, interactive=False, login_timeout=600):
+    """Yield the signed-in tab itself, left on the dashboard route; raise LoginRequired if a human sign-in is needed and
+    not allowed/completed, PortalBusy if another action holds the tab. Move around only with `route`: never goto/reload."""
+    with _tab_lock():
+        page = None
+        port = _live_port()
+        if port is not None:
+            page = _portal_page(playwright.chromium.connect_over_cdp(f"http://127.0.0.1:{port}"))
+        if page and is_authenticated(page) and _nudge(page):  # the nudge also resets the portal's idle timer
+            _record(True)
+        elif not interactive:
             _record(False)
             raise LoginRequired()
-        yield work  # the browser and signed-in tab stay open; Playwright just disconnects when it stops
-    finally:
-        try:
-            work.close()
-        except Exception:
-            pass
+        else:
+            page = _human_login(playwright, login_timeout)[1]
+        yield page
 
 
 def keep_alive() -> dict:
+    """Active keep-alive: open_portal nudges the signed-in tab (resets the idle timer, proves it is alive). Run every 5 minutes or less.
+    If another action holds the tab, that action is activity enough: just report status."""
     was_ok = _read_status().get("authenticated", False)
     try:
-        with sync_playwright() as p, open_portal(p, work_tab=False):
+        with sync_playwright() as p, open_portal(p):
             pass
+    except PortalBusy:
+        pass
     except LoginRequired:
         if was_ok:  # toast only on the alive -> dead transition
             _toast()
     return status()
-
 
 def stop() -> None:
     if _live_port() is not None:

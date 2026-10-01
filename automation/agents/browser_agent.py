@@ -8,7 +8,7 @@ running; every later run attaches to that signed-in tab.
 """
 import pathlib
 from dotenv import load_dotenv
-from automation.agents import portal_session
+from automation.agents import portal_session, portal_timetable
 from automation.core.base_agent import BaseAgent
 
 load_dotenv()
@@ -64,7 +64,11 @@ Agent `browser` supports:
 {category_hint}
 - `login`: Opens Chrome so the USER can sign in to MyUPES (including the CAPTCHA) themselves. The window must stay open (it can be minimised); closing it or rebooting means signing in again. No params.
 - `session_status`: Reports whether the MyUPES session is signed in, with last login / expiry times. No browser. No params.
-- `keep_alive`: Checks that the signed-in MyUPES browser window is still signed in and refreshes it. No params.
+- `keep_alive`: Keeps the signed-in MyUPES browser window alive (sign-in expires after ~13 idle minutes; run at least every 5 minutes) and reports whether it is still signed in. No params.
+- `get_timetable`: Read-only. Reads the signed-in MyUPES Academic Timetable (classes, rooms, instructors, overlaps) for up to seven days. Needs an existing sign-in; never signs in.
+  Params (both optional):
+  - `start_date`: "YYYY-MM-DD" — defaults to today
+  - `end_date`: "YYYY-MM-DD" — inclusive, defaults to start_date, at most 7 days from start_date
 """
 
     def get_capabilities(self) -> dict:
@@ -84,6 +88,10 @@ Agent `browser` supports:
                                    "parameters": {}, "safety": "safe"},
                 "keep_alive": {"description": "Checks the signed-in MyUPES browser window is still signed in",
                                "parameters": {}, "safety": "safe"},
+                "get_timetable": {"description": "Reads the MyUPES Academic Timetable (read-only, needs an existing sign-in)",
+                                  "parameters": {"start_date": "string (YYYY-MM-DD, optional)",
+                                                 "end_date": "string (YYYY-MM-DD, optional)"},
+                                  "safety": "safe"},
             },
         }
 
@@ -96,6 +104,8 @@ Agent `browser` supports:
             return self._action_create_service_request(**params)
         if action in self._SESSION_ACTIONS:
             return self._action_session(action)
+        if action == "get_timetable":
+            return self._action_get_timetable(**params)
         return {"status": "failure", "details": f"Unknown action: {action}"}
 
     _SESSION_ACTIONS = {"login", "session_status", "keep_alive"}
@@ -111,7 +121,7 @@ Agent `browser` supports:
                 data = portal_session.keep_alive()
             else:
                 data = portal_session.status()
-        except portal_session.LoginRequired as e:
+        except (portal_session.LoginRequired, portal_session.PortalBusy) as e:
             return {"status": "failure", "details": str(e), "data": portal_session.status()}
         except Exception as e:
             return {"status": "failure", "details": f"Error: {e}", "data": {}}
@@ -122,6 +132,17 @@ Agent `browser` supports:
             details = "MyUPES session is signed in." if signed_in else "MyUPES needs sign-in: run the `login` action."
         ok = signed_in or action == "session_status"
         return {"status": "success" if ok else "failure", "details": details, "data": data}
+
+    def _action_get_timetable(self, start_date=None, end_date=None) -> dict:
+        from playwright.sync_api import sync_playwright
+        try:
+            with sync_playwright() as p, portal_session.open_portal(p) as page:
+                data = portal_timetable.read_timetable(page, start_date, end_date)
+        except (portal_timetable.PortalError, portal_session.LoginRequired, portal_session.PortalBusy) as e:
+            return {"status": "failure", "details": str(e)}
+        except Exception as e:
+            return {"status": "failure", "details": f"Error: {e}"}
+        return {"status": "success", "details": data["text"], "data": data}
 
     def verify(self, expected_state: dict) -> dict:
         return {"verified": True, "expected": expected_state, "actual": {}, "details": "Verified."}
@@ -261,6 +282,8 @@ Agent `browser` supports:
                     "details": f"✅ Ticket '{short_description}' submitted: {department} > {category} > {subcategory}"
                 }
 
+        except portal_session.PortalBusy as e:
+            return {"status": "failure", "details": str(e)}
         except Exception as e:
             return {"status": "failure", "details": f"Error: {str(e)}"}
 

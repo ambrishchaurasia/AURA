@@ -1,6 +1,8 @@
 """Offline checks for the MyUPES portal session layer (no browser)."""
 import contextlib
 import json
+import os
+import time
 import types
 
 import pytest
@@ -70,3 +72,75 @@ def test_portal_page_picks_first_portal_tab():
     assert ps._portal_page(browser) is mine
     browser.contexts[0].pages = [other]
     assert ps._portal_page(browser) is None
+
+
+def test_nudge_needs_live_response_and_no_auth_url():
+    class Page:
+        def __init__(self, url, status=None):
+            self.url, self.status, self.handlers, self.paths = url, status, [], []
+        def on(self, _e, h): self.handlers.append(h)
+        def remove_listener(self, _e, h): self.handlers.remove(h)
+        def evaluate(self, _js, path):
+            self.paths.append(path)
+            if self.status:
+                for h in self.handlers:
+                    h(types.SimpleNamespace(status=self.status, request=types.SimpleNamespace(resource_type="xhr")))
+        def wait_for_timeout(self, _ms): pass
+
+    alive = Page(f"https://{ps.HOST}{ps.SCHEDULE_ROUTE}", 200)
+    assert ps._nudge(alive) and alive.paths == [ps.DASHBOARD_ROUTE] and not alive.handlers
+    assert not ps._nudge(Page(f"https://{ps.HOST}/oneportal/app/auth/login", 200))
+    assert not ps._nudge(Page(f"https://{ps.HOST}{ps.DASHBOARD_ROUTE}"))  # no request seen
+
+def test_nudge_from_dashboard_visits_schedule_and_ends_on_dashboard():
+    class Page:
+        def __init__(self): self.url, self.paths, self.h = f"https://{ps.HOST}{ps.DASHBOARD_ROUTE}", [], []
+        def on(self, _e, h): self.h.append(h)
+        def remove_listener(self, _e, h): self.h.remove(h)
+        def evaluate(self, _js, path):
+            self.paths.append(path)
+            for h in self.h:
+                h(types.SimpleNamespace(status=200, request=types.SimpleNamespace(resource_type="fetch")))
+        def wait_for_timeout(self, _ms): pass
+
+    page = Page()
+    assert ps._nudge(page) and page.paths == [ps.SCHEDULE_ROUTE, ps.DASHBOARD_ROUTE]
+
+
+def test_route_raises_login_required_when_bounced_to_auth():
+    class Page:
+        url = f"https://{ps.HOST}{ps.DASHBOARD_ROUTE}"
+        def evaluate(self, _js, path): self.url = f"https://{ps.HOST}/oneportal/app/auth/login"
+        def wait_for_timeout(self, _ms): pass
+
+    with pytest.raises(ps.LoginRequired):
+        ps.route(Page(), ps.SCHEDULE_ROUTE)
+
+
+def test_tab_lock_busy_stale_and_released(data_dir):
+    lock = data_dir / "myupes_tab.lock"
+    with ps._tab_lock():
+        assert lock.exists()
+        with pytest.raises(ps.PortalBusy):
+            with ps._tab_lock():
+                pass
+        assert lock.exists()  # the busy attempt must not release the holder's lock
+    assert not lock.exists()
+    lock.write_text("")
+    old = time.time() - 600
+    os.utime(lock, (old, old))
+    with ps._tab_lock():  # stale: taken over
+        assert lock.exists()
+    assert not lock.exists()
+    with pytest.raises(RuntimeError):
+        with ps._tab_lock():
+            raise RuntimeError("boom")
+    assert not lock.exists()
+
+
+def test_keep_alive_when_busy_returns_status_without_nudging(monkeypatch):
+    monkeypatch.setattr(ps, "sync_playwright", lambda: contextlib.nullcontext())
+    nudged = []
+    monkeypatch.setattr(ps, "_nudge", lambda page: nudged.append(1))
+    with ps._tab_lock():
+        assert "browser_running" in ps.keep_alive() and not nudged
