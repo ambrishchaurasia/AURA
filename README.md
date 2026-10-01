@@ -1,58 +1,36 @@
-# AURA (Automated Universal Robotic Agent)
+# AURA
 
-Lightweight, extensible desktop and web automation framework for Windows powered by **MCP (Model Context Protocol)** and LLMs.
+Windows desktop and browser automation engine designed for MCP clients (Claude Desktop) and local LLMs.
 
----
+## Features
 
-## ✅ Completed (`[x]`)
+### Browser & Ticket Automation
+- [x] Portal login and dashboard navigation via Playwright
+- [x] Automated support ticket creation with dynamic dropdown handling and form submission
 
-### 🎫 Browser Automation (Ticket Creation)
-- [x] Automated login & session handling for university student portal
-- [x] Portal navigation (dashboard, service requests)
-- [x] Dynamic Kendo UI dropdown interaction (Department, Category, Subcategory)
-- [x] Form fill (short description, body) & end-to-end ticket submission
-- [x] Playwright DOM automation with resilient selector engine
+### Notepad Automation
+- [x] Launch, focus, and direct text input/editing (Win 11 & Classic)
+- [x] File saving workflow with Save-As dialog and overwrite prompt handling
 
-### 📝 Notepad Automation
-- [x] Launch, connect, and focus instances (Windows 11 Modern & Classic Notepad)
-- [x] Type and append text directly
-- [x] Read editor content & clear editor
-- [x] Automated "Save As" flow (handles file naming, path, and keyboard shortcuts)
-- [x] Overwrite confirmation dialog handling
+### Windows & System Control
+- [x] Top-level window enumeration, focus, and state control (minimize/maximize)
+- [x] Windows Settings navigation across core system panels
 
-### ⚙️ Windows & System Control
-- [x] Enumerate all active top-level Windows apps & process IDs (PIDs)
-- [x] Window focus, bring-to-front, minimize, maximize, and restore
-- [x] Windows 11 Settings navigation (Display, Bluetooth, Sound, Network, Power)
-
-### 🔌 MCP (Model Context Protocol) Integration
-- [x] Stdio MCP server for Claude Desktop & MCP clients
-- [x] Tool: `aura_list_windows`
-- [x] Tool: `aura_list_agents`
-- [x] Tool: `aura_get_agent_info`
-- [x] Tool: `aura_execute_action`
-- [x] Multithreaded Apartment (MTA) COM fix (`sys.coinit_flags = 0`) preventing async thread deadlocks on Windows
-
-### 🧱 Architecture
-- [x] Core automation logic decoupled from presentation layer
-- [x] Removed legacy web frontend to focus on headless MCP & local AI orchestration
-- [x] Lightweight fallback REST API (`automation.api`)
+### MCP Integration
+- [x] Stdio MCP server exposing 4 tools (`aura_list_windows`, `aura_list_agents`, `aura_get_agent_info`, `aura_execute_action`)
+- [x] Thread-safe Windows COM (MTA) initialization to prevent async worker deadlocks
 
 ---
 
-## 📋 To-Do / Roadmap (`[ ]`)
+## Roadmap
 
-- [ ] **Local LLM Orchestrator**: Direct local LLM control (Ollama / GGUF) without cloud API dependency
-- [ ] **Self-Healing Selectors**: Vision / OCR fallback when UI elements shift or update
-- [ ] **Additional Desktop Agents**:
-  - [ ] File Explorer agent (file move, copy, search)
-  - [ ] Calculator / basic utility agents
-  - [ ] Terminal / PowerShell automation agent
-- [ ] **Multi-Step Goal Planner**: Complex task decomposition directly inside the local agent loop
+- [ ] Local LLM orchestrator (offline execution via Ollama/GGUF without cloud APIs)
+- [ ] Additional agents for File Explorer and PowerShell
+- [ ] Vision/OCR fallback for self-healing UI selectors
 
 ---
 
-## ⚡ Quick Start (Claude Desktop MCP)
+## Claude Desktop Setup
 
 Add to `%APPDATA%\Claude\claude_desktop_config.json`:
 
