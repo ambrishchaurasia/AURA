@@ -1,4 +1,4 @@
-"""Read-only Windows display inventory. No mode-setting API is loaded here."""
+"""Windows display inventory, plus a refresh-rate change (ChangeDisplaySettingsExW) that is tested, applied and read back."""
 import ctypes as ct
 import hashlib
 import json
@@ -41,6 +41,8 @@ class WindowsDisplays:
         self.api.EnumDisplayDevicesW.restype = ct.c_int32
         self.api.EnumDisplaySettingsExW.argtypes = [ct.c_wchar_p,ct.c_uint32,ct.POINTER(DisplayMode),ct.c_uint32]
         self.api.EnumDisplaySettingsExW.restype = ct.c_int32
+        self.api.ChangeDisplaySettingsExW.argtypes = [ct.c_wchar_p,ct.POINTER(DisplayMode),ct.c_void_p,ct.c_uint32,ct.c_void_p]
+        self.api.ChangeDisplaySettingsExW.restype = ct.c_int32
         display_config.configure(self.api)
 
     def timings(self, check):
@@ -151,6 +153,29 @@ def preview_refresh(inventory, display_id, nominal_hz):
             'status':status,
             'rate_precision':inventory['rate_precision'], 'applied':False,
             'message':'Inspection only. Applying a mode with confirmation and revert handling is not implemented yet.'}
+
+
+def set_refresh_rate(display_id, nominal_hz):
+    nominal_hz = int(nominal_hz)
+    inventory = read_displays(lambda: None)
+    preview = preview_refresh(inventory, display_id, nominal_hz)
+    if preview['status'] == 'already_current':
+        return {**preview['display'], 'previous_nominal_hz': nominal_hz}
+    if preview['status'] != 'available':
+        raise ActionError(preview['text'].splitlines()[-1].split(' No settings changed')[0])
+    api, device = WindowsDisplays(), preview['display']['device_name']
+    previous = preview['display']['current']['nominal_hz']
+    mode = api.mode(device, 0xffffffff)  # ENUM_CURRENT_SETTINGS
+    mode.frequency = nominal_hz
+    mode.fields |= 0x5c0000  # DM_DISPLAYFREQUENCY | DM_PELSWIDTH | DM_PELSHEIGHT | DM_BITSPERPEL
+    # CDS_TEST first; only a successful test is applied (CDS_UPDATEREGISTRY).
+    for flag in (2, 1):
+        if api.api.ChangeDisplaySettingsExW(device, ct.byref(mode), None, flag, None) != 0:
+            raise ActionError(f'Windows rejected {nominal_hz} Hz (ChangeDisplaySettingsEx {"test" if flag == 2 else "apply"} failed). Nothing was changed.')
+    now = next((d for d in read_displays(lambda: None)['displays'] if d['display_id'] == display_id), None)
+    if now is None or now['current']['nominal_hz'] != nominal_hz:
+        raise ActionError(f'The refresh rate is {now and now["current"]["nominal_hz"]} Hz after the request, not {nominal_hz} Hz.')
+    return {**now, 'previous_nominal_hz': previous}
 
 
 def preview_exact_refresh(inventory, display_id, numerator, denominator):

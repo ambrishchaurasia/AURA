@@ -97,6 +97,110 @@ def get_volume():
     return set_volume()
 
 
+# ── Default playback device (Core Audio enumeration + IPolicyConfig) ────────
+
+class _PropKey(ct.Structure):
+    _fields_ = [('fmtid', Guid), ('pid', U32)]
+
+
+def _create(clsid, iid):
+    out = PTR()
+    if ct.windll.ole32.CoCreateInstance(ct.byref(_guid(clsid)), None, 23, ct.byref(_guid(iid)), ct.byref(out)) < 0:
+        raise ActionError('Windows audio device enumeration is unavailable.')
+    return out
+
+
+def _release(pointer):
+    if pointer:
+        _call(pointer, 2, [])  # IUnknown::Release
+
+
+def _device_id(device):
+    text = PTR()
+    _call(device, 5, [ct.POINTER(PTR)], ct.byref(text))  # IMMDevice::GetId
+    try:
+        return ct.wstring_at(text.value)
+    finally:
+        ct.windll.ole32.CoTaskMemFree(text)
+
+
+def _device_name(device):
+    store, value = PTR(), (ct.c_ubyte * 24)()  # PROPVARIANT: vt at 0, pointer at 8
+    _call(device, 4, [U32, ct.POINTER(PTR)], 0, ct.byref(store))  # OpenPropertyStore(STGM_READ)
+    try:
+        key = _PropKey(_guid('a45c254e-df1c-4efd-8020-67d146a850e0'), 14)  # PKEY_Device_FriendlyName
+        _call(store, 5, [ct.POINTER(_PropKey), PTR], ct.byref(key), ct.byref(value))
+        pointer = PTR.from_buffer(value, 8).value
+        return ct.wstring_at(pointer) if value[0] == 31 and pointer else ''  # VT_LPWSTR
+    finally:
+        ct.windll.ole32.PropVariantClear(ct.byref(value))
+        _release(store)
+
+
+def _devices(enumerator):
+    """[(id, friendly name, is_default)] of active playback endpoints."""
+    collection, default, count = PTR(), PTR(), U32()
+    _call(enumerator, 3, [U32, U32, ct.POINTER(PTR)], 0, 1, ct.byref(collection))  # eRender, DEVICE_STATE_ACTIVE
+    try:
+        try:
+            _call(enumerator, 4, [U32, U32, ct.POINTER(PTR)], 0, 1, ct.byref(default))
+            default_id = _device_id(default)
+        except ActionError:
+            default_id = None
+        finally:
+            _release(default)
+        _call(collection, 3, [ct.POINTER(U32)], ct.byref(count))
+        found = []
+        for index in range(count.value):
+            device = PTR()
+            _call(collection, 4, [U32, ct.POINTER(PTR)], index, ct.byref(device))
+            try:
+                found.append((_device_id(device), _device_name(device)))
+            finally:
+                _release(device)
+        return [(device_id, name, device_id == default_id) for device_id, name in found]
+    finally:
+        _release(collection)
+
+
+def _audio(match=None):
+    ole = ct.windll.ole32
+    ole.CoInitializeEx(None, 0)
+    enumerator = PTR()
+    try:
+        enumerator = _create('bcde0395-e52f-467c-8e3d-c4579291692e', 'a95664d2-9614-4f35-a746-de8db63617e6')
+        devices = _devices(enumerator)
+        if match is not None:
+            hits = [device for device in devices if str(match).casefold() in device[1].casefold()]
+            if len(hits) != 1:
+                raise ActionError(f"No single audio device matches '{match}'. Available: {', '.join(d[1] for d in devices)}.")
+            # IPolicyConfig is undocumented and may break on a future Windows build.
+            policy = _create('870af99c-171d-4f9e-af0d-e63df40c2bc9', 'f8679f50-850a-41cf-9c72-430f290290c8')
+            try:
+                for role in (0, 1, 2):  # console, multimedia, communications
+                    _call(policy, 13, [ct.c_wchar_p, U32], hits[0][0], role)  # SetDefaultEndpoint
+            finally:
+                _release(policy)
+            devices = _devices(enumerator)
+            if not any(device_id == hits[0][0] and default for device_id, _, default in devices):
+                raise ActionError(f"The default audio device did not change to '{hits[0][1]}'.")
+        return {'devices': [{'name': name, 'default': default} for _, name, default in devices]}
+    finally:
+        _release(enumerator)
+        ole.CoUninitialize()
+
+
+def list_audio_devices(match=None):
+    with ThreadPoolExecutor(1) as pool:  # own COM apartment, like set_volume
+        return pool.submit(_audio, match).result()
+
+
+def set_audio_device(name):
+    if not name:
+        raise ActionError('name of the audio device is required.')
+    return list_audio_devices(str(name or ''))
+
+
 # ── Brightness (WMI; built-in laptop panels only) ───────────────────────────
 
 def get_brightness():
