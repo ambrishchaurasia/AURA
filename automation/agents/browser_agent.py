@@ -3,19 +3,15 @@ AURA Browser Agent — Hybrid Automation for MyUPES Portal
 
 Uses Playwright with confirmed-real HTML selectors from the portal.
 All selectors were verified by inspecting the actual portal HTML.
-Session is persisted in myupes_session.json to skip CAPTCHA on repeat runs.
+The sign-in is done by the user (`login` action) in a Chrome window that portal_session.py keeps
+running; every later run attaches to that signed-in tab.
 """
-import os
-import time
 import pathlib
 from dotenv import load_dotenv
+from automation.agents import portal_session
 from automation.core.base_agent import BaseAgent
 
 load_dotenv()
-
-SESSION_FILE = pathlib.Path(__file__).parent.parent.parent / "automation" / "myupes_session.json"
-PORTAL_URL   = "https://myupes-beta.upes.ac.in/oneportal/app/auth/login"
-DASHBOARD_URL = "https://myupes-beta.upes.ac.in/oneportal/app/dashboard"
 
 
 class BrowserAgent(BaseAgent):
@@ -66,6 +62,9 @@ Agent `browser` supports:
   Map their complaint to the closest matching department/category/subcategory.
   Example: "wifi sucks" → department="Information Technology", category="Network", subcategory="Internet not working"
 {category_hint}
+- `login`: Opens Chrome so the USER can sign in to MyUPES (including the CAPTCHA) themselves. The window must stay open (it can be minimised); closing it or rebooting means signing in again. No params.
+- `session_status`: Reports whether the MyUPES session is signed in, with last login / expiry times. No browser. No params.
+- `keep_alive`: Checks that the signed-in MyUPES browser window is still signed in and refreshes it. No params.
 """
 
     def get_capabilities(self) -> dict:
@@ -78,7 +77,13 @@ Agent `browser` supports:
                                    "subcategory": "string", "short_description": "string",
                                    "description": "string"},
                     "safety": "safe",
-                }
+                },
+                "login": {"description": "Opens Chrome and keeps it running; the user signs in to MyUPES themselves",
+                          "parameters": {}, "safety": "safe"},
+                "session_status": {"description": "Reports the MyUPES session status (no browser)",
+                                   "parameters": {}, "safety": "safe"},
+                "keep_alive": {"description": "Checks the signed-in MyUPES browser window is still signed in",
+                               "parameters": {}, "safety": "safe"},
             },
         }
 
@@ -89,7 +94,34 @@ Agent `browser` supports:
         params = params or {}
         if action == "create_service_request":
             return self._action_create_service_request(**params)
+        if action in self._SESSION_ACTIONS:
+            return self._action_session(action)
         return {"status": "failure", "details": f"Unknown action: {action}"}
+
+    _SESSION_ACTIONS = {"login", "session_status", "keep_alive"}
+
+    def _action_session(self, action: str) -> dict:
+        try:
+            if action == "login":
+                from playwright.sync_api import sync_playwright
+                with sync_playwright() as p, portal_session.open_portal(p, interactive=True):
+                    pass
+                data = portal_session.status()
+            elif action == "keep_alive":
+                data = portal_session.keep_alive()
+            else:
+                data = portal_session.status()
+        except portal_session.LoginRequired as e:
+            return {"status": "failure", "details": str(e), "data": portal_session.status()}
+        except Exception as e:
+            return {"status": "failure", "details": f"Error: {e}", "data": {}}
+        signed_in = data.get("authenticated")
+        if action == "login":
+            details = "Signed in to MyUPES."
+        else:
+            details = "MyUPES session is signed in." if signed_in else "MyUPES needs sign-in: run the `login` action."
+        ok = signed_in or action == "session_status"
+        return {"status": "success" if ok else "failure", "details": details, "data": data}
 
     def verify(self, expected_state: dict) -> dict:
         return {"verified": True, "expected": expected_state, "actual": {}, "details": "Verified."}
@@ -98,11 +130,6 @@ Agent `browser` supports:
 
     def _action_create_service_request(self, department="", category="", subcategory="",
                                         short_description="", description="") -> dict:
-        username = os.environ.get("MYUPES_USERNAME", "")
-        password  = os.environ.get("MYUPES_PASSWORD", "")
-        if not username:
-            return {"status": "failure", "details": "MYUPES_USERNAME not set in .env"}
-
         from playwright.sync_api import sync_playwright
         try:
             from playwright_stealth import Stealth
@@ -111,37 +138,9 @@ Agent `browser` supports:
             has_stealth = False
 
         try:
-            with sync_playwright() as p:
-                browser = p.chromium.launch(headless=False)
-
-                # ── 1. Login / Session ───────────────────────────────────────
-                if SESSION_FILE.exists():
-                    print("[BrowserAgent] 🔄 Loading saved session...")
-                    context = browser.new_context(storage_state=str(SESSION_FILE))
-                    page = context.new_page()
-                    if has_stealth:
-                        Stealth().apply_stealth_sync(page)
-                    page.goto(DASHBOARD_URL)
-                    page.wait_for_timeout(3000)
-                    if "login" in page.url.lower():
-                        print("[BrowserAgent] Session expired — doing fresh login...")
-                        SESSION_FILE.unlink(missing_ok=True)
-                        page.goto(PORTAL_URL)
-                        page.wait_for_load_state("networkidle")
-                        self._fill_login(page, username, password)
-                        self._await_dashboard(page, context)
-                    else:
-                        print("[BrowserAgent] ✅ Already logged in!")
-                else:
-                    context = browser.new_context()
-                    page = context.new_page()
-                    if has_stealth:
-                        Stealth().apply_stealth_sync(page)
-                    page.goto(PORTAL_URL)
-                    page.wait_for_load_state("networkidle")
-                    self._fill_login(page, username, password)
-                    self._await_dashboard(page, context)
-
+            with sync_playwright() as p, portal_session.open_portal(p, interactive=True) as page:
+                if has_stealth:
+                    Stealth().apply_stealth_sync(page)
                 # ── 2. Navigate to Service Requests ──────────────────────────
                 print("[BrowserAgent] Navigating to Service Requests...")
                 try:
@@ -257,7 +256,6 @@ Agent `browser` supports:
                     print("[BrowserAgent] No confirmation dialog appeared.")
 
                 page.wait_for_timeout(2000)
-                browser.close()
                 return {
                     "status": "success",
                     "details": f"✅ Ticket '{short_description}' submitted: {department} > {category} > {subcategory}"
@@ -305,15 +303,3 @@ Agent `browser` supports:
         except Exception as e:
             print(f"[BrowserAgent] Dropdown error '{placeholder}': {e}")
 
-    def _fill_login(self, page, username: str, password: str):
-        """Opens login page and waits for manual login (no auto-fill)."""
-        print("[BrowserAgent] ✅ Login page opened. Please log in manually and solve CAPTCHA...")
-
-    def _await_dashboard(self, page, context):
-        """Waits up to 90s for dashboard, then saves session."""
-        try:
-            page.wait_for_selector("a[href*='servicerequest']", timeout=90000)
-            context.storage_state(path=str(SESSION_FILE))
-            print(f"[BrowserAgent] ✅ Session saved — CAPTCHA skipped next time!")
-        except Exception:
-            print("[BrowserAgent] ⚠️ Dashboard wait timed out.")
