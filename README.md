@@ -24,9 +24,10 @@ Windows desktop and browser automation engine designed for MCP clients (Claude D
 
 ## Roadmap
 
-- [ ] Local LLM orchestrator (offline execution via Ollama/GGUF without cloud APIs)
-- [ ] Additional agents for File Explorer and PowerShell
-- [ ] Vision/OCR fallback for self-healing UI selectors
+- [ ] Local LLM integration (offline inference without cloud APIs)
+- [ ] Complete Windows Settings agent functionality
+- [ ] Expand portal capabilities (attendance, schedule, notices)
+- [ ] File Explorer agent (navigation, file management, search)
 
 ---
 
