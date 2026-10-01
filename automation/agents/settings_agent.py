@@ -12,7 +12,7 @@ from __future__ import annotations
 import time
 
 from automation.core.base_agent import BaseAgent
-from automation.agents.settings_ops import ActionError, displays, radios, system, ui
+from automation.agents.settings_ops import ActionError, control_panel, displays, radios, system, ui
 
 
 def _on(params: dict) -> bool:
@@ -92,6 +92,16 @@ ACTIONS = {
     "get_battery": (lambda p: system.get_battery(), "Read battery level, charging and battery saver state", {}, "safe"),
     "list_power_plans": (lambda p: system.list_power_plans(), "List power plans and the active one", {}, "safe"),
     "set_power_plan": (lambda p: system.set_power_plan(p.get("name", "")), "Activate a power plan by name", {"name": "string"}, "safe"),
+    "get_power_timeouts": (lambda p: system.get_power_timeouts(), "Read minutes before the display turns off and before the PC sleeps, plugged in and on battery (0 = never)", {}, "safe"),
+    "set_power_timeout": (lambda p: system.set_power_timeout(p.get("what"), p.get("power"), p.get("minutes")),
+                          "Set minutes before the display turns off or the PC sleeps (0 = never) and verify it",
+                          {"what": "display|sleep", "power": "plugged_in|battery", "minutes": "int 0-600"}, "safe"),
+    "list_control_panel_tasks": (lambda p: control_panel.list_tasks(str(p.get("query", ""))),
+                                 "Classic Control Panel: search its tasks by word (e.g. 'power', 'sleep', 'mouse'); no query lists all. Use the dedicated actions first",
+                                 {"query": "string (optional)"}, "safe"),
+    "open_control_panel_task": (lambda p: control_panel.open_task(p.get("name")),
+                                "Open one classic Control Panel task by its exact name from list_control_panel_tasks. Opens its window; it changes no value itself",
+                                {"name": "string"}, "safe"),
     "storage_status": (lambda p: system.storage_status(), "Read free space on each drive", {}, "safe"),
     "system_info": (lambda p: system.system_info(), "Read PC name, Windows version and uptime", {}, "safe"),
     "check_updates": (_check_updates, "Open Windows Update and start checking for updates", {}, "safe"),
@@ -133,6 +143,7 @@ class SettingsAgent(BaseAgent):
         return ("\nAgent `settings` controls and troubleshoots Windows 11 settings.\n"
                 "Prefer the dedicated actions (set_bluetooth, set_wifi, set_volume, ...): they call Windows directly and verify the result.\n"
                 "For any other setting use read_page to see the controls on a page, then set_toggle / select_option / click.\n"
+                "For anything in classic Control Panel, list_control_panel_tasks with a search word, then open_control_panel_task with the matching name.\n"
                 "A failed action reports the real reason in `details`; never tell the user it worked.\n"
                 + "\n".join(lines) + f"\nPages for navigate / page: {', '.join(ui.PAGES)}.\n")
 

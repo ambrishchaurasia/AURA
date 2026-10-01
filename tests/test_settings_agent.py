@@ -7,7 +7,7 @@ import types
 import pytest
 
 from automation.agents.settings_agent import ACTIONS, SettingsAgent
-from automation.agents.settings_ops import ActionError, displays, radios, system, ui
+from automation.agents.settings_ops import ActionError, control_panel, displays, radios, system, ui
 
 
 class FakeRadio:
@@ -88,3 +88,81 @@ def test_refresh_rate_refuses_unsupported_and_audio_name_must_be_unique(monkeypa
     monkeypatch.setattr(system, '_create', lambda clsid, iid: ct.c_void_p())
     ambiguous = SettingsAgent().execute('set_audio_device', {'name': 'speakers'})
     assert ambiguous['status'] == 'failure' and 'Speakers (B)' in ambiguous['details']
+
+
+FAKE_TASKS = [{'name': 'Choose a power plan', 'group': 'Power Options', 'path': 'P1'},
+              {'name': 'Edit power plan', 'group': 'Power Options', 'path': 'P2'},
+              {'name': 'Change when the computer sleeps', 'group': 'Power Options', 'path': 'P3'},
+              {'name': 'Change mouse settings', 'group': 'Mouse', 'path': 'P4'},
+              {'name': 'Change mouse settings', 'group': 'Mouse', 'path': 'P4'}]
+
+
+@pytest.fixture
+def fake_panel(monkeypatch):
+    opened = []
+    monkeypatch.setattr(control_panel, '_tasks', lambda: FAKE_TASKS)
+    monkeypatch.setattr(control_panel, '_invoke', opened.append)
+    return opened
+
+
+def test_control_panel_list_filters_and_hides_paths(fake_panel):
+    everything = SettingsAgent().execute('list_control_panel_tasks')['data']
+    assert everything['count'] == 4 and all(set(t) == {'name', 'group'} for t in everything['tasks'])
+    assert SettingsAgent().execute('list_control_panel_tasks', {'query': 'POWER plan'})['data']['count'] == 2
+    assert SettingsAgent().execute('list_control_panel_tasks', {'query': 'mouse'})['data']['tasks'][0]['group'] == 'Mouse'
+
+
+def test_control_panel_open_exact_fuzzy_ambiguous_missing(fake_panel):
+    agent = SettingsAgent()
+    assert agent.execute('open_control_panel_task', {'name': 'edit POWER plan'})['data']['opened'] == 'Edit power plan'
+    assert agent.execute('open_control_panel_task', {'name': 'Change mouse settings'})['data']['opened'] == 'Change mouse settings'
+    assert agent.execute('open_control_panel_task', {'name': 'Change mouse setings'})['data']['opened'] == 'Change mouse settings'
+    assert fake_panel == ['P2', 'P4', 'P4']
+    ambiguous = agent.execute('open_control_panel_task', {'name': 'power'})
+    assert ambiguous['status'] == 'failure' and 'Edit power plan' in ambiguous['details']
+    assert agent.execute('open_control_panel_task', {'name': 'qqqqzzzz'})['status'] == 'failure'
+    assert len(fake_panel) == 3
+
+
+def test_control_panel_path_goes_through_environment(monkeypatch):
+    calls = []
+    monkeypatch.setattr(system, '_powershell', lambda script, timeout=20, env=None: calls.append((script, env)) or (0, ''))
+    control_panel._invoke("P'; evil")
+    script, env = calls[0]
+    assert env == {'AURA_CP_PATH': "P'; evil"} and 'evil' not in script and '$env:AURA_CP_PATH' in script
+
+
+POWERCFG = """Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)
+  GUID Alias: SCHEME_BALANCED
+  Subgroup GUID: 7516b95f-f776-4464-8c53-06167f40cc99  (Display)
+    Power Setting GUID: 3c0bc021-c8a8-4e07-a973-6b14cbcb2b7e  (Turn off display after)
+      GUID Alias: VIDEOIDLE
+      Minimum Possible Setting: 0x00000000
+      Maximum Possible Setting: 0xffffffff
+      Possible Settings increment: 0x00000001
+      Possible Settings units: Seconds
+    Current AC Power Setting Index: 0x{ac:08x}
+    Current DC Power Setting Index: 0x{dc:08x}
+"""
+
+
+def test_power_timeouts_parse_set_and_readback_mismatch(monkeypatch):
+    state = {'monitor-timeout-ac': 600, 'monitor-timeout-dc': 300, 'standby-timeout-ac': 0, 'standby-timeout-dc': 900}
+
+    def fake_cmd(args, timeout=20, env=None):
+        if args[1] == '/query':
+            key = 'monitor' if args[3] == 'SUB_VIDEO' else 'standby'
+            return 0, POWERCFG.format(ac=state[key + '-timeout-ac'], dc=state[key + '-timeout-dc'])
+        if not frozen:
+            state[args[2]] = int(args[3]) * 60
+        return 0, ''
+
+    frozen = False
+    monkeypatch.setattr(system, '_cmd', fake_cmd)
+    assert system.get_power_timeouts() == {'display_plugged_in': 10, 'display_battery': 5, 'sleep_plugged_in': 0, 'sleep_battery': 15}
+    assert SettingsAgent().execute('set_power_timeout', {'what': 'sleep', 'power': 'battery', 'minutes': 20})['data']['sleep_battery'] == 20
+    assert state['standby-timeout-dc'] == 1200
+    frozen = True
+    stuck = SettingsAgent().execute('set_power_timeout', {'what': 'display', 'power': 'plugged_in', 'minutes': 1})
+    assert stuck['status'] == 'failure' and 'did not change' in stuck['details']
+    assert SettingsAgent().execute('set_power_timeout', {'what': 'display', 'power': 'plugged_in', 'minutes': 601})['status'] == 'failure'
