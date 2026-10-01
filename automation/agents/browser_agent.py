@@ -8,7 +8,7 @@ running; every later run attaches to that signed-in tab.
 """
 import pathlib
 from dotenv import load_dotenv
-from automation.agents import portal_session, portal_timetable
+from automation.agents import portal_session, portal_timetable, portal_attendance
 from automation.core.base_agent import BaseAgent
 
 load_dotenv()
@@ -69,6 +69,11 @@ Agent `browser` supports:
   Params (both optional):
   - `start_date`: "YYYY-MM-DD" — defaults to today
   - `end_date`: "YYYY-MM-DD" — inclusive, defaults to start_date, at most 7 days from start_date
+- `get_attendance`: Read-only. Reads the signed-in MyUPES attendance for one exact program/term/course and date range (separate overall and datewise percentages, present/condoned/held counts). Needs an existing sign-in; never signs in. Do not guess labels: run `list_attendance_options` first.
+  Params (all required):
+  - `program`, `term`, `course`: <string> — exact portal labels
+  - `start_date`, `end_date`: "YYYY-MM-DD" — inclusive, at most 367 dates
+- `list_attendance_options`: Read-only. Lists the program, term and course option labels the attendance page currently offers. No params.
 """
 
     def get_capabilities(self) -> dict:
@@ -92,6 +97,12 @@ Agent `browser` supports:
                                   "parameters": {"start_date": "string (YYYY-MM-DD, optional)",
                                                  "end_date": "string (YYYY-MM-DD, optional)"},
                                   "safety": "safe"},
+                "get_attendance": {"description": "Reads MyUPES attendance for one program/term/course and date range (read-only, needs an existing sign-in)",
+                                   "parameters": {"program": "string", "term": "string", "course": "string",
+                                                  "start_date": "string (YYYY-MM-DD)", "end_date": "string (YYYY-MM-DD)"},
+                                   "safety": "safe"},
+                "list_attendance_options": {"description": "Lists the program, term and course labels the attendance page offers (read-only)",
+                                            "parameters": {}, "safety": "safe"},
             },
         }
 
@@ -106,6 +117,10 @@ Agent `browser` supports:
             return self._action_session(action)
         if action == "get_timetable":
             return self._action_get_timetable(**params)
+        if action == "get_attendance":
+            return self._action_attendance(portal_attendance.read_attendance, **params)
+        if action == "list_attendance_options":
+            return self._action_attendance(portal_attendance.list_attendance_options)
         return {"status": "failure", "details": f"Unknown action: {action}"}
 
     _SESSION_ACTIONS = {"login", "session_status", "keep_alive"}
@@ -138,6 +153,17 @@ Agent `browser` supports:
         try:
             with sync_playwright() as p, portal_session.open_portal(p) as page:
                 data = portal_timetable.read_timetable(page, start_date, end_date)
+        except (portal_timetable.PortalError, portal_session.LoginRequired, portal_session.PortalBusy) as e:
+            return {"status": "failure", "details": str(e)}
+        except Exception as e:
+            return {"status": "failure", "details": f"Error: {e}"}
+        return {"status": "success", "details": data["text"], "data": data}
+
+    def _action_attendance(self, read, **params) -> dict:
+        from playwright.sync_api import sync_playwright
+        try:
+            with sync_playwright() as p, portal_session.open_portal(p) as page:
+                data = read(page, **params)
         except (portal_timetable.PortalError, portal_session.LoginRequired, portal_session.PortalBusy) as e:
             return {"status": "failure", "details": str(e)}
         except Exception as e:
