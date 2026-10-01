@@ -19,7 +19,7 @@ def test_status_transitions_and_toast_only_once(monkeypatch):
     monkeypatch.setattr(ps, "_toast", lambda: toasts.append(1))
 
     @contextlib.contextmanager
-    def dead(_p):
+    def dead(_p, **_kw):
         ps._record(False)
         raise ps.LoginRequired()
         yield

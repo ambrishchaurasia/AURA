@@ -1,8 +1,8 @@
 """
 Shared MyUPES portal session, kept alive as one signed-in browser.
 
-The MyUPES sign-in lives only in the page's memory: any full page load (reload or goto) in the signed-in
-tab throws it back to the login page, and no cookie or storage copy restores it, so nothing is saved to disk. `login` starts a normal Chrome/Edge that stays running; the
+The MyUPES sign-in does not survive a browser restart, and signing in to MyUPES elsewhere appears to end this
+session, so AURA keeps one browser alive and works in its own tabs. `login` starts a normal Chrome/Edge that stays running; the
 person signs in there and every later run attaches to that same tab over CDP. Nothing here types
 credentials or solves the CAPTCHA: it only waits for the person.
 
@@ -26,6 +26,7 @@ from playwright.sync_api import sync_playwright
 
 LOGIN_URL = "https://myupes-beta.upes.ac.in/oneportal/app/auth/login"
 DASHBOARD_URL = "https://myupes-beta.upes.ac.in/oneportal/app/dashboard"
+HOME_URL = "https://myupes-beta.upes.ac.in/connectportal/user/student/home/dashboard"
 HOST = "myupes-beta.upes.ac.in"
 
 
@@ -40,7 +41,7 @@ def _status_file() -> pathlib.Path:
 
 
 class LoginRequired(Exception):
-    def __init__(self, message="MyUPES sign-in needed. Run the `login` action once and sign in in the window that opens."):
+    def __init__(self, message="MyUPES sign-in needed. Run the `login` action once and sign in in the window that opens. Close other MyUPES sign-ins first."):
         super().__init__(message)
 
 
@@ -179,7 +180,7 @@ def _human_login(playwright, timeout):
             has_tab = True
         if not has_tab:
             urlopen(Request(f"http://127.0.0.1:{port}/json/new?{LOGIN_URL}", method="PUT"), timeout=5).close()
-    print("[Portal] Sign in to MyUPES in the browser window, then leave that window open (minimise it). Do not refresh or close it.")
+    print("[Portal] Sign in to MyUPES in the browser window, then leave that window open (minimise it). Do not close it or sign in to MyUPES elsewhere.")
     deadline = time.monotonic() + timeout
     while True:
         while True:
@@ -200,7 +201,8 @@ def _human_login(playwright, timeout):
             if time.monotonic() > deadline:
                 raise LoginRequired("Sign-in was not completed in time.")
             time.sleep(2)
-        # The portal may bounce the first sign-in after a few seconds; never reload, a full page load signs the tab out.
+        # The portal may bounce the first sign-in after a few seconds; wait it out rather than reload. The sign-in does not
+        # survive a browser restart, and signing in elsewhere appears to end it, so the browser stays alive.
         page.wait_for_timeout(10000)
         if is_authenticated(page):
             break
@@ -210,10 +212,10 @@ def _human_login(playwright, timeout):
 
 
 @contextmanager
-def open_portal(playwright, *, interactive=False, login_timeout=600):
-    """Yield the already signed-in portal tab; raise LoginRequired if a human sign-in is needed and not allowed/completed.
-    Callers must move around with in-app clicks only, never `page.goto` / `page.reload`."""
-    # ponytail: one shared tab, no locking; add a lock file if two actions ever run at once.
+def open_portal(playwright, *, interactive=False, login_timeout=600, work_tab=True):
+    """Yield a fresh tab on the student dashboard; raise LoginRequired if a human sign-in is needed and not allowed/completed.
+    Callers may navigate the yielded tab freely; it is closed on exit."""
+    # Each action gets its own tab, so actions do not disturb each other or the signed-in tab.
     page = None
     port = _live_port()
     if port is not None:
@@ -225,13 +227,27 @@ def open_portal(playwright, *, interactive=False, login_timeout=600):
         raise LoginRequired()
     else:
         page = _human_login(playwright, login_timeout)[1]
-    yield page  # the browser and tab stay open; Playwright just disconnects when it stops
+    if not work_tab:
+        yield page  # the signed-in tab itself; callers must not navigate it
+        return
+    work = page.context.new_page()
+    try:
+        work.goto(HOME_URL)
+        if not is_authenticated(work):
+            _record(False)
+            raise LoginRequired()
+        yield work  # the browser and signed-in tab stay open; Playwright just disconnects when it stops
+    finally:
+        try:
+            work.close()
+        except Exception:
+            pass
 
 
 def keep_alive() -> dict:
     was_ok = _read_status().get("authenticated", False)
     try:
-        with sync_playwright() as p, open_portal(p):
+        with sync_playwright() as p, open_portal(p, work_tab=False):
             pass
     except LoginRequired:
         if was_ok:  # toast only on the alive -> dead transition
