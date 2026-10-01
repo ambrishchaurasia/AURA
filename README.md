@@ -15,6 +15,9 @@ Windows desktop and browser automation engine designed for MCP clients (Claude D
 ### Windows & System Control
 - [x] Top-level window enumeration, focus, and state control (minimize/maximize)
 - [x] Windows Settings navigation across core system panels
+- [x] Settings control via Windows APIs, each change read back: Bluetooth / Wi-Fi on, off, restart; volume, mute, brightness, dark mode, power plans, battery, storage, display inspection
+- [x] Settings troubleshooting: network diagnosis, DNS flush, radio restart, Bluetooth device presence, Windows Update check
+- [x] Any other Settings toggle / dropdown / button by name (`read_page`, `set_toggle`, `select_option`, `click`)
 
 ### MCP Integration
 - [x] Stdio MCP server exposing 4 tools (`aura_list_windows`, `aura_list_agents`, `aura_get_agent_info`, `aura_execute_action`)
@@ -25,7 +28,6 @@ Windows desktop and browser automation engine designed for MCP clients (Claude D
 ## Roadmap
 
 - [ ] Local LLM integration (offline inference without cloud APIs)
-- [ ] Complete Windows Settings agent functionality
 - [ ] Expand portal capabilities (attendance, schedule, notices)
 - [ ] File Explorer agent (navigation, file management, search)
 
