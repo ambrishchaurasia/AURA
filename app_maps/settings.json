@@ -1,0 +1,1653 @@
+{
+  "app_name": "Settings",
+  "app_version": "Windows 11 Crawled",
+  "last_crawled": "2026-09-10",
+  "window_match": {
+    "name_contains": "Settings",
+    "class_name_contains": "ApplicationFrameWindow"
+  },
+  "nodes": [
+    {
+      "id": "nav_system",
+      "name": "System",
+      "control_type": "ListItemControl"
+    },
+    {
+      "id": "item_microsoft_365_get_started",
+      "name": "Microsoft 365 Get started",
+      "control_type": "ButtonControl",
+      "automation_id": "Microsoft 365",
+      "parent": "nav_system"
+    },
+    {
+      "id": "item_windows_update_last_checked:_1_hour_ago",
+      "name": "Windows Update Last checked: 1 hour ago",
+      "control_type": "ButtonControl",
+      "automation_id": "Windows Update",
+      "parent": "nav_system"
+    },
+    {
+      "id": "item_display",
+      "name": "Display",
+      "control_type": "ListItemControl",
+      "parent": "nav_system"
+    },
+    {
+      "id": "item_sound",
+      "name": "Sound",
+      "control_type": "ListItemControl",
+      "parent": "nav_system"
+    },
+    {
+      "id": "item_notifications",
+      "name": "Notifications",
+      "control_type": "ListItemControl",
+      "parent": "nav_system"
+    },
+    {
+      "id": "item_focus",
+      "name": "Focus",
+      "control_type": "ListItemControl",
+      "parent": "nav_system"
+    },
+    {
+      "id": "item_power_and_battery",
+      "name": "Power & battery",
+      "control_type": "ListItemControl",
+      "parent": "nav_system"
+    },
+    {
+      "id": "item_storage",
+      "name": "Storage",
+      "control_type": "ListItemControl",
+      "parent": "nav_system"
+    },
+    {
+      "id": "item_nearby_sharing",
+      "name": "Nearby sharing",
+      "control_type": "ListItemControl",
+      "parent": "nav_system"
+    },
+    {
+      "id": "item_multitasking",
+      "name": "Multitasking",
+      "control_type": "ListItemControl",
+      "parent": "nav_system"
+    },
+    {
+      "id": "item_advanced",
+      "name": "Advanced",
+      "control_type": "ListItemControl",
+      "parent": "nav_system"
+    },
+    {
+      "id": "item_activation",
+      "name": "Activation",
+      "control_type": "ListItemControl",
+      "parent": "nav_system"
+    },
+    {
+      "id": "nav_bluetooth_and_devices",
+      "name": "Bluetooth & devices",
+      "control_type": "ListItemControl"
+    },
+    {
+      "id": "item_realme_buds_t01,_category_communications_device,_battery_unknown,_state_bluetooth_is_turned_off,",
+      "name": "realme Buds T01, Category Communications device, Battery Unknown, State Bluetooth is turned off,",
+      "control_type": "ListItemControl",
+      "parent": "nav_bluetooth_and_devices"
+    },
+    {
+      "id": "item_more_options",
+      "name": "More options",
+      "control_type": "ButtonControl",
+      "automation_id": "ThreeDotMenuButton",
+      "parent": "nav_bluetooth_and_devices"
+    },
+    {
+      "id": "item_connect",
+      "name": "Connect",
+      "control_type": "ButtonControl",
+      "automation_id": "{6cd413d7-a3db-5532-a150-ac190cc32ab0}_Button",
+      "parent": "nav_bluetooth_and_devices"
+    },
+    {
+      "id": "item_ast-311,_category_headphone,_battery_unknown,_state_bluetooth_is_turned_off,",
+      "name": "AST-311, Category Headphone, Battery Unknown, State Bluetooth is turned off,",
+      "control_type": "ListItemControl",
+      "parent": "nav_bluetooth_and_devices"
+    },
+    {
+      "id": "item_airdopes_148,_category_communications_device,_battery_unknown,_state_bluetooth_is_turned_off,",
+      "name": "Airdopes 148, Category Communications device, Battery Unknown, State Bluetooth is turned off,",
+      "control_type": "ListItemControl",
+      "parent": "nav_bluetooth_and_devices"
+    },
+    {
+      "id": "item_add_device",
+      "name": "Add device",
+      "control_type": "ButtonControl",
+      "parent": "nav_bluetooth_and_devices"
+    },
+    {
+      "id": "item_view_more_devices",
+      "name": "View more devices",
+      "control_type": "ButtonControl",
+      "parent": "nav_bluetooth_and_devices"
+    },
+    {
+      "id": "item_bluetooth",
+      "name": "Bluetooth",
+      "control_type": "ButtonControl",
+      "automation_id": "SystemSettings_Device_BluetoothRadioToggle_ToggleSwitch",
+      "parent": "nav_bluetooth_and_devices"
+    },
+    {
+      "id": "item_devices",
+      "name": "Devices",
+      "control_type": "ListItemControl",
+      "parent": "nav_bluetooth_and_devices"
+    },
+    {
+      "id": "item_printers_and_scanners",
+      "name": "Printers & scanners",
+      "control_type": "ListItemControl",
+      "parent": "nav_bluetooth_and_devices"
+    },
+    {
+      "id": "item_mobile_devices",
+      "name": "Mobile devices",
+      "control_type": "ListItemControl",
+      "parent": "nav_bluetooth_and_devices"
+    },
+    {
+      "id": "item_cameras",
+      "name": "Cameras",
+      "control_type": "ListItemControl",
+      "parent": "nav_bluetooth_and_devices"
+    },
+    {
+      "id": "item_mouse",
+      "name": "Mouse",
+      "control_type": "ListItemControl",
+      "parent": "nav_bluetooth_and_devices"
+    },
+    {
+      "id": "item_keyboard",
+      "name": "Keyboard",
+      "control_type": "ListItemControl",
+      "parent": "nav_bluetooth_and_devices"
+    },
+    {
+      "id": "nav_network_and_internet",
+      "name": "Network & internet",
+      "control_type": "ListItemControl"
+    },
+    {
+      "id": "item_properties_for_wi-fi_(2nd_floor_2)",
+      "name": "Properties for Wi-Fi (2nd Floor 2)",
+      "control_type": "ButtonControl",
+      "parent": "nav_network_and_internet"
+    },
+    {
+      "id": "item_data_usage_for_wi-fi_(2nd_floor_2)_949_mb_from_the_last_30_days",
+      "name": "Data usage for Wi-Fi (2nd Floor 2) 949 MB from the last 30 days",
+      "control_type": "ButtonControl",
+      "automation_id": "{0750DDAF-16E7-49AD-A76A-D5653406BA6E}_UsageButton",
+      "parent": "nav_network_and_internet"
+    },
+    {
+      "id": "item_wi-fi",
+      "name": "Wi-Fi",
+      "control_type": "ListItemControl",
+      "parent": "nav_network_and_internet"
+    },
+    {
+      "id": "item_ethernet",
+      "name": "Ethernet",
+      "control_type": "ListItemControl",
+      "parent": "nav_network_and_internet"
+    },
+    {
+      "id": "item_vpn",
+      "name": "VPN",
+      "control_type": "ListItemControl",
+      "parent": "nav_network_and_internet"
+    },
+    {
+      "id": "item_mobile_hotspot",
+      "name": "Mobile hotspot",
+      "control_type": "ListItemControl",
+      "parent": "nav_network_and_internet"
+    },
+    {
+      "id": "item_airplane_mode",
+      "name": "Airplane mode",
+      "control_type": "ListItemControl",
+      "parent": "nav_network_and_internet"
+    },
+    {
+      "id": "item_airplane_mode__nav_network_and_internet",
+      "name": "Airplane Mode",
+      "control_type": "ButtonControl",
+      "automation_id": "SystemSettings_Radio_IsAirplaneModeEnabled_ToggleSwitch",
+      "parent": "nav_network_and_internet"
+    },
+    {
+      "id": "item_proxy",
+      "name": "Proxy",
+      "control_type": "ListItemControl",
+      "parent": "nav_network_and_internet"
+    },
+    {
+      "id": "item_dial-up",
+      "name": "Dial-up",
+      "control_type": "ListItemControl",
+      "parent": "nav_network_and_internet"
+    },
+    {
+      "id": "item_advanced_network_settings",
+      "name": "Advanced network settings",
+      "control_type": "ListItemControl",
+      "parent": "nav_network_and_internet"
+    },
+    {
+      "id": "item_vertical_small_decrease",
+      "name": "Vertical Small Decrease",
+      "control_type": "ButtonControl",
+      "automation_id": "VerticalSmallDecrease",
+      "parent": "nav_network_and_internet"
+    },
+    {
+      "id": "item_vertical_large_increase",
+      "name": "Vertical Large Increase",
+      "control_type": "ButtonControl",
+      "automation_id": "VerticalLargeIncrease",
+      "parent": "nav_network_and_internet"
+    },
+    {
+      "id": "item_vertical_small_increase",
+      "name": "Vertical Small Increase",
+      "control_type": "ButtonControl",
+      "automation_id": "VerticalSmallIncrease",
+      "parent": "nav_network_and_internet"
+    },
+    {
+      "id": "nav_personalization",
+      "name": "Personalization",
+      "control_type": "ListItemControl"
+    },
+    {
+      "id": "item_windows_(light),_1_images",
+      "name": "Windows (light), 1 images",
+      "control_type": "ListItemControl",
+      "parent": "nav_personalization"
+    },
+    {
+      "id": "item_windows_(dark),_1_images",
+      "name": "Windows (dark), 1 images",
+      "control_type": "ListItemControl",
+      "parent": "nav_personalization"
+    },
+    {
+      "id": "item_windows_spotlight,_dynamic_images",
+      "name": "Windows spotlight, dynamic images",
+      "control_type": "ListItemControl",
+      "parent": "nav_personalization"
+    },
+    {
+      "id": "item_glow,_4_images",
+      "name": "Glow, 4 images",
+      "control_type": "ListItemControl",
+      "parent": "nav_personalization"
+    },
+    {
+      "id": "item_captured_motion,_4_images",
+      "name": "Captured Motion, 4 images",
+      "control_type": "ListItemControl",
+      "parent": "nav_personalization"
+    },
+    {
+      "id": "item_sunrise,_4_images",
+      "name": "Sunrise, 4 images",
+      "control_type": "ListItemControl",
+      "parent": "nav_personalization"
+    },
+    {
+      "id": "item_background",
+      "name": "Background",
+      "control_type": "ListItemControl",
+      "parent": "nav_personalization"
+    },
+    {
+      "id": "item_colors",
+      "name": "Colors",
+      "control_type": "ListItemControl",
+      "parent": "nav_personalization"
+    },
+    {
+      "id": "item_themes",
+      "name": "Themes",
+      "control_type": "ListItemControl",
+      "parent": "nav_personalization"
+    },
+    {
+      "id": "item_dynamic_lighting",
+      "name": "Dynamic Lighting",
+      "control_type": "ListItemControl",
+      "parent": "nav_personalization"
+    },
+    {
+      "id": "item_lock_screen",
+      "name": "Lock screen",
+      "control_type": "ListItemControl",
+      "parent": "nav_personalization"
+    },
+    {
+      "id": "item_text_input",
+      "name": "Text input",
+      "control_type": "ListItemControl",
+      "parent": "nav_personalization"
+    },
+    {
+      "id": "item_start",
+      "name": "Start",
+      "control_type": "ListItemControl",
+      "parent": "nav_personalization"
+    },
+    {
+      "id": "item_taskbar",
+      "name": "Taskbar",
+      "control_type": "ListItemControl",
+      "parent": "nav_personalization"
+    },
+    {
+      "id": "item_vertical_small_decrease__nav_personalization",
+      "name": "Vertical Small Decrease",
+      "control_type": "ButtonControl",
+      "automation_id": "VerticalSmallDecrease",
+      "parent": "nav_personalization"
+    },
+    {
+      "id": "item_vertical_large_increase__nav_personalization",
+      "name": "Vertical Large Increase",
+      "control_type": "ButtonControl",
+      "automation_id": "VerticalLargeIncrease",
+      "parent": "nav_personalization"
+    },
+    {
+      "id": "item_vertical_small_increase__nav_personalization",
+      "name": "Vertical Small Increase",
+      "control_type": "ButtonControl",
+      "automation_id": "VerticalSmallIncrease",
+      "parent": "nav_personalization"
+    },
+    {
+      "id": "nav_apps",
+      "name": "Apps",
+      "control_type": "ListItemControl"
+    },
+    {
+      "id": "item_installed_apps",
+      "name": "Installed apps",
+      "control_type": "ListItemControl",
+      "parent": "nav_apps"
+    },
+    {
+      "id": "item_advanced_app_settings",
+      "name": "Advanced app settings",
+      "control_type": "ListItemControl",
+      "parent": "nav_apps"
+    },
+    {
+      "id": "item_default_apps",
+      "name": "Default apps",
+      "control_type": "ListItemControl",
+      "parent": "nav_apps"
+    },
+    {
+      "id": "item_actions",
+      "name": "Actions",
+      "control_type": "ListItemControl",
+      "parent": "nav_apps"
+    },
+    {
+      "id": "item_offline_maps",
+      "name": "Offline maps",
+      "control_type": "ListItemControl",
+      "parent": "nav_apps"
+    },
+    {
+      "id": "item_apps_for_websites",
+      "name": "Apps for websites",
+      "control_type": "ListItemControl",
+      "parent": "nav_apps"
+    },
+    {
+      "id": "item_video_playback",
+      "name": "Video playback",
+      "control_type": "ListItemControl",
+      "parent": "nav_apps"
+    },
+    {
+      "id": "item_startup",
+      "name": "Startup",
+      "control_type": "ListItemControl",
+      "parent": "nav_apps"
+    },
+    {
+      "id": "item_resume",
+      "name": "Resume",
+      "control_type": "ListItemControl",
+      "parent": "nav_apps"
+    },
+    {
+      "id": "item_vertical_small_decrease__nav_apps",
+      "name": "Vertical Small Decrease",
+      "control_type": "ButtonControl",
+      "automation_id": "VerticalSmallDecrease",
+      "parent": "nav_apps"
+    },
+    {
+      "id": "item_vertical_large_increase__nav_apps",
+      "name": "Vertical Large Increase",
+      "control_type": "ButtonControl",
+      "automation_id": "VerticalLargeIncrease",
+      "parent": "nav_apps"
+    },
+    {
+      "id": "item_vertical_small_increase__nav_apps",
+      "name": "Vertical Small Increase",
+      "control_type": "ButtonControl",
+      "automation_id": "VerticalSmallIncrease",
+      "parent": "nav_apps"
+    },
+    {
+      "id": "nav_accounts",
+      "name": "Accounts",
+      "control_type": "ListItemControl"
+    },
+    {
+      "id": "item_rewards_manage_rewards",
+      "name": "Rewards Manage Rewards",
+      "control_type": "ButtonControl",
+      "automation_id": "Rewards",
+      "parent": "nav_accounts"
+    },
+    {
+      "id": "item_learn_more",
+      "name": "Learn more",
+      "control_type": "ButtonControl",
+      "parent": "nav_accounts"
+    },
+    {
+      "id": "item_close",
+      "name": "Close",
+      "control_type": "ButtonControl",
+      "automation_id": "CloseButton",
+      "parent": "nav_accounts"
+    },
+    {
+      "id": "item_\ue010",
+      "name": "\ue010",
+      "control_type": "ButtonControl",
+      "parent": "nav_accounts"
+    },
+    {
+      "id": "item_view_product_details.",
+      "name": "View product details.",
+      "control_type": "HyperlinkControl",
+      "parent": "nav_accounts"
+    },
+    {
+      "id": "item_\ue013",
+      "name": "\ue013",
+      "control_type": "ButtonControl",
+      "parent": "nav_accounts"
+    },
+    {
+      "id": "nav_time_and_language",
+      "name": "Time & language",
+      "control_type": "ListItemControl"
+    },
+    {
+      "id": "item_time_zone",
+      "name": "Time zone",
+      "control_type": "ButtonControl",
+      "parent": "nav_time_and_language"
+    },
+    {
+      "id": "item_region",
+      "name": "Region",
+      "control_type": "ButtonControl",
+      "parent": "nav_time_and_language"
+    },
+    {
+      "id": "item_date_and_time",
+      "name": "Date & time",
+      "control_type": "ListItemControl",
+      "parent": "nav_time_and_language"
+    },
+    {
+      "id": "item_language_and_region",
+      "name": "Language & region",
+      "control_type": "ListItemControl",
+      "parent": "nav_time_and_language"
+    },
+    {
+      "id": "item_typing",
+      "name": "Typing",
+      "control_type": "ListItemControl",
+      "parent": "nav_time_and_language"
+    },
+    {
+      "id": "item_speech",
+      "name": "Speech",
+      "control_type": "ListItemControl",
+      "parent": "nav_time_and_language"
+    },
+    {
+      "id": "nav_gaming",
+      "name": "Gaming",
+      "control_type": "ListItemControl"
+    },
+    {
+      "id": "item_xbox_mode",
+      "name": "XBOX mode",
+      "control_type": "ListItemControl",
+      "parent": "nav_gaming"
+    },
+    {
+      "id": "item_game_bar",
+      "name": "Game Bar",
+      "control_type": "ListItemControl",
+      "parent": "nav_gaming"
+    },
+    {
+      "id": "item_captures",
+      "name": "Captures",
+      "control_type": "ListItemControl",
+      "parent": "nav_gaming"
+    },
+    {
+      "id": "item_game_mode",
+      "name": "Game Mode",
+      "control_type": "ListItemControl",
+      "parent": "nav_gaming"
+    },
+    {
+      "id": "item_vertical_small_decrease__nav_gaming",
+      "name": "Vertical Small Decrease",
+      "control_type": "ButtonControl",
+      "automation_id": "VerticalSmallDecrease",
+      "parent": "nav_gaming"
+    },
+    {
+      "id": "item_vertical_large_increase__nav_gaming",
+      "name": "Vertical Large Increase",
+      "control_type": "ButtonControl",
+      "automation_id": "VerticalLargeIncrease",
+      "parent": "nav_gaming"
+    },
+    {
+      "id": "item_vertical_small_increase__nav_gaming",
+      "name": "Vertical Small Increase",
+      "control_type": "ButtonControl",
+      "automation_id": "VerticalSmallIncrease",
+      "parent": "nav_gaming"
+    },
+    {
+      "id": "nav_accessibility",
+      "name": "Accessibility",
+      "control_type": "ListItemControl"
+    },
+    {
+      "id": "item_text_size",
+      "name": "Text size",
+      "control_type": "ListItemControl",
+      "parent": "nav_accessibility"
+    },
+    {
+      "id": "item_visual_effects",
+      "name": "Visual effects",
+      "control_type": "ListItemControl",
+      "parent": "nav_accessibility"
+    },
+    {
+      "id": "item_mouse_pointer_and_touch",
+      "name": "Mouse pointer and touch",
+      "control_type": "ListItemControl",
+      "parent": "nav_accessibility"
+    },
+    {
+      "id": "item_text_cursor",
+      "name": "Text cursor",
+      "control_type": "ListItemControl",
+      "parent": "nav_accessibility"
+    },
+    {
+      "id": "item_magnifier",
+      "name": "Magnifier",
+      "control_type": "ListItemControl",
+      "parent": "nav_accessibility"
+    },
+    {
+      "id": "item_color_filters",
+      "name": "Color filters",
+      "control_type": "ListItemControl",
+      "parent": "nav_accessibility"
+    },
+    {
+      "id": "item_screen_tint",
+      "name": "Screen tint",
+      "control_type": "ListItemControl",
+      "parent": "nav_accessibility"
+    },
+    {
+      "id": "item_contrast_themes",
+      "name": "Contrast themes",
+      "control_type": "ListItemControl",
+      "parent": "nav_accessibility"
+    },
+    {
+      "id": "item_narrator",
+      "name": "Narrator",
+      "control_type": "ListItemControl",
+      "parent": "nav_accessibility"
+    },
+    {
+      "id": "item_audio",
+      "name": "Audio",
+      "control_type": "ListItemControl",
+      "parent": "nav_accessibility"
+    },
+    {
+      "id": "item_vertical_small_decrease__nav_accessibility",
+      "name": "Vertical Small Decrease",
+      "control_type": "ButtonControl",
+      "automation_id": "VerticalSmallDecrease",
+      "parent": "nav_accessibility"
+    },
+    {
+      "id": "item_vertical_large_increase__nav_accessibility",
+      "name": "Vertical Large Increase",
+      "control_type": "ButtonControl",
+      "automation_id": "VerticalLargeIncrease",
+      "parent": "nav_accessibility"
+    },
+    {
+      "id": "item_vertical_small_increase__nav_accessibility",
+      "name": "Vertical Small Increase",
+      "control_type": "ButtonControl",
+      "automation_id": "VerticalSmallIncrease",
+      "parent": "nav_accessibility"
+    },
+    {
+      "id": "nav_privacy_and_security",
+      "name": "Privacy & security",
+      "control_type": "ListItemControl"
+    },
+    {
+      "id": "item_windows_security",
+      "name": "Windows Security",
+      "control_type": "ListItemControl",
+      "parent": "nav_privacy_and_security"
+    },
+    {
+      "id": "item_find_my_device",
+      "name": "Find my device",
+      "control_type": "ListItemControl",
+      "parent": "nav_privacy_and_security"
+    },
+    {
+      "id": "item_device_encryption",
+      "name": "Device encryption",
+      "control_type": "ListItemControl",
+      "parent": "nav_privacy_and_security"
+    },
+    {
+      "id": "item_recommendations_and_offers",
+      "name": "Recommendations & offers",
+      "control_type": "ListItemControl",
+      "parent": "nav_privacy_and_security"
+    },
+    {
+      "id": "item_speech__nav_privacy_and_security",
+      "name": "Speech",
+      "control_type": "ListItemControl",
+      "parent": "nav_privacy_and_security"
+    },
+    {
+      "id": "item_inking_and_typing_personalization",
+      "name": "Inking & typing personalization",
+      "control_type": "ListItemControl",
+      "parent": "nav_privacy_and_security"
+    },
+    {
+      "id": "item_diagnostics_and_feedback",
+      "name": "Diagnostics & feedback",
+      "control_type": "ListItemControl",
+      "parent": "nav_privacy_and_security"
+    },
+    {
+      "id": "item_search",
+      "name": "Search",
+      "control_type": "ListItemControl",
+      "parent": "nav_privacy_and_security"
+    },
+    {
+      "id": "item_location",
+      "name": "Location",
+      "control_type": "ListItemControl",
+      "parent": "nav_privacy_and_security"
+    },
+    {
+      "id": "item_camera",
+      "name": "Camera",
+      "control_type": "ListItemControl",
+      "parent": "nav_privacy_and_security"
+    },
+    {
+      "id": "item_vertical_small_decrease__nav_privacy_and_security",
+      "name": "Vertical Small Decrease",
+      "control_type": "ButtonControl",
+      "automation_id": "VerticalSmallDecrease",
+      "parent": "nav_privacy_and_security"
+    },
+    {
+      "id": "item_vertical_large_increase__nav_privacy_and_security",
+      "name": "Vertical Large Increase",
+      "control_type": "ButtonControl",
+      "automation_id": "VerticalLargeIncrease",
+      "parent": "nav_privacy_and_security"
+    },
+    {
+      "id": "item_vertical_small_increase__nav_privacy_and_security",
+      "name": "Vertical Small Increase",
+      "control_type": "ButtonControl",
+      "automation_id": "VerticalSmallIncrease",
+      "parent": "nav_privacy_and_security"
+    },
+    {
+      "id": "nav_windows_update",
+      "name": "Windows Update",
+      "control_type": "ListItemControl"
+    },
+    {
+      "id": "item_check_for_updates",
+      "name": "Check for updates",
+      "control_type": "ButtonControl",
+      "automation_id": "SystemSettings_MusUpdate_UpdateActionButton3_Button",
+      "parent": "nav_windows_update"
+    },
+    {
+      "id": "item_be_among_the_first_to_get_the_latest_non-security_updates,_fixes,_and_improvements_as_they_roll_out._learn_more",
+      "name": "Be among the first to get the latest non-security updates, fixes, and improvements as they roll out. Learn more",
+      "control_type": "HyperlinkControl",
+      "automation_id": "SystemSettings_MusUpdate_ContinuousInnovationOptin2_HyperlinkButton",
+      "parent": "nav_windows_update"
+    },
+    {
+      "id": "item_get_the_latest_updates_as_soon_as_they're_available",
+      "name": "Get the latest updates as soon as they're available",
+      "control_type": "ButtonControl",
+      "automation_id": "SystemSettings_MusUpdate_ContinuousInnovationOptin2_ToggleSwitch",
+      "parent": "nav_windows_update"
+    },
+    {
+      "id": "item_select_the_date_to_pause_updates_until.learn_more",
+      "name": "Select the date to pause updates until.Learn more",
+      "control_type": "HyperlinkControl",
+      "automation_id": "SystemSettings_MusUpdate_PauseUpdate3_HyperlinkButton",
+      "parent": "nav_windows_update"
+    },
+    {
+      "id": "item_pick_a_date",
+      "name": "Pick a date",
+      "control_type": "ButtonControl",
+      "automation_id": "SystemSettings_MusUpdate_PauseUpdate3_Button",
+      "parent": "nav_windows_update"
+    },
+    {
+      "id": "item_update_history",
+      "name": "Update history",
+      "control_type": "ButtonControl",
+      "automation_id": "EntityItemButton",
+      "parent": "nav_windows_update"
+    },
+    {
+      "id": "item_advanced_options",
+      "name": "Advanced options",
+      "control_type": "ButtonControl",
+      "automation_id": "EntityItemButton",
+      "parent": "nav_windows_update"
+    },
+    {
+      "id": "item_windows_insider_program",
+      "name": "Windows Insider Program",
+      "control_type": "ButtonControl",
+      "automation_id": "EntityItemButton",
+      "parent": "nav_windows_update"
+    },
+    {
+      "id": "item_windows_update_is_committed_to_helping_reduce_carbon_emissions._learn_more",
+      "name": "Windows Update is committed to helping reduce carbon emissions. Learn more",
+      "control_type": "HyperlinkControl",
+      "automation_id": "SystemSettings_MusUpdate_SustainabilityMessage2_HyperlinkButton",
+      "parent": "nav_windows_update"
+    },
+    {
+      "id": "item_get_help",
+      "name": "Get help",
+      "control_type": "HyperlinkControl",
+      "parent": "nav_windows_update"
+    },
+    {
+      "id": "item_give_feedback",
+      "name": "Give feedback",
+      "control_type": "HyperlinkControl",
+      "parent": "nav_windows_update"
+    }
+  ],
+  "feature_index": {
+    "open system settings": {
+      "path": [
+        "nav_system"
+      ]
+    },
+    "open microsoft 365 get started in system": {
+      "path": [
+        "nav_system",
+        "item_microsoft_365_get_started"
+      ]
+    },
+    "open windows update last checked: 1 hour ago in system": {
+      "path": [
+        "nav_system",
+        "item_windows_update_last_checked:_1_hour_ago"
+      ]
+    },
+    "open display in system": {
+      "path": [
+        "nav_system",
+        "item_display"
+      ]
+    },
+    "open sound in system": {
+      "path": [
+        "nav_system",
+        "item_sound"
+      ]
+    },
+    "open notifications in system": {
+      "path": [
+        "nav_system",
+        "item_notifications"
+      ]
+    },
+    "open focus in system": {
+      "path": [
+        "nav_system",
+        "item_focus"
+      ]
+    },
+    "open power & battery in system": {
+      "path": [
+        "nav_system",
+        "item_power_and_battery"
+      ]
+    },
+    "open storage in system": {
+      "path": [
+        "nav_system",
+        "item_storage"
+      ]
+    },
+    "open nearby sharing in system": {
+      "path": [
+        "nav_system",
+        "item_nearby_sharing"
+      ]
+    },
+    "open multitasking in system": {
+      "path": [
+        "nav_system",
+        "item_multitasking"
+      ]
+    },
+    "open advanced in system": {
+      "path": [
+        "nav_system",
+        "item_advanced"
+      ]
+    },
+    "open activation in system": {
+      "path": [
+        "nav_system",
+        "item_activation"
+      ]
+    },
+    "open bluetooth & devices settings": {
+      "path": [
+        "nav_bluetooth_and_devices"
+      ]
+    },
+    "open realme buds t01, category communications device, battery unknown, state bluetooth is turned off, in bluetooth & devices": {
+      "path": [
+        "nav_bluetooth_and_devices",
+        "item_realme_buds_t01,_category_communications_device,_battery_unknown,_state_bluetooth_is_turned_off,"
+      ]
+    },
+    "open more options in bluetooth & devices": {
+      "path": [
+        "nav_bluetooth_and_devices",
+        "item_more_options"
+      ]
+    },
+    "open connect in bluetooth & devices": {
+      "path": [
+        "nav_bluetooth_and_devices",
+        "item_connect"
+      ]
+    },
+    "open ast-311, category headphone, battery unknown, state bluetooth is turned off, in bluetooth & devices": {
+      "path": [
+        "nav_bluetooth_and_devices",
+        "item_ast-311,_category_headphone,_battery_unknown,_state_bluetooth_is_turned_off,"
+      ]
+    },
+    "open airdopes 148, category communications device, battery unknown, state bluetooth is turned off, in bluetooth & devices": {
+      "path": [
+        "nav_bluetooth_and_devices",
+        "item_airdopes_148,_category_communications_device,_battery_unknown,_state_bluetooth_is_turned_off,"
+      ]
+    },
+    "open add device in bluetooth & devices": {
+      "path": [
+        "nav_bluetooth_and_devices",
+        "item_add_device"
+      ]
+    },
+    "open view more devices in bluetooth & devices": {
+      "path": [
+        "nav_bluetooth_and_devices",
+        "item_view_more_devices"
+      ]
+    },
+    "open bluetooth in bluetooth & devices": {
+      "path": [
+        "nav_bluetooth_and_devices",
+        "item_bluetooth"
+      ]
+    },
+    "open devices in bluetooth & devices": {
+      "path": [
+        "nav_bluetooth_and_devices",
+        "item_devices"
+      ]
+    },
+    "open printers & scanners in bluetooth & devices": {
+      "path": [
+        "nav_bluetooth_and_devices",
+        "item_printers_and_scanners"
+      ]
+    },
+    "open mobile devices in bluetooth & devices": {
+      "path": [
+        "nav_bluetooth_and_devices",
+        "item_mobile_devices"
+      ]
+    },
+    "open cameras in bluetooth & devices": {
+      "path": [
+        "nav_bluetooth_and_devices",
+        "item_cameras"
+      ]
+    },
+    "open mouse in bluetooth & devices": {
+      "path": [
+        "nav_bluetooth_and_devices",
+        "item_mouse"
+      ]
+    },
+    "open keyboard in bluetooth & devices": {
+      "path": [
+        "nav_bluetooth_and_devices",
+        "item_keyboard"
+      ]
+    },
+    "open network & internet settings": {
+      "path": [
+        "nav_network_and_internet"
+      ]
+    },
+    "open properties for wi-fi (2nd floor 2) in network & internet": {
+      "path": [
+        "nav_network_and_internet",
+        "item_properties_for_wi-fi_(2nd_floor_2)"
+      ]
+    },
+    "open data usage for wi-fi (2nd floor 2) 949 mb from the last 30 days in network & internet": {
+      "path": [
+        "nav_network_and_internet",
+        "item_data_usage_for_wi-fi_(2nd_floor_2)_949_mb_from_the_last_30_days"
+      ]
+    },
+    "open wi-fi in network & internet": {
+      "path": [
+        "nav_network_and_internet",
+        "item_wi-fi"
+      ]
+    },
+    "open ethernet in network & internet": {
+      "path": [
+        "nav_network_and_internet",
+        "item_ethernet"
+      ]
+    },
+    "open vpn in network & internet": {
+      "path": [
+        "nav_network_and_internet",
+        "item_vpn"
+      ]
+    },
+    "open mobile hotspot in network & internet": {
+      "path": [
+        "nav_network_and_internet",
+        "item_mobile_hotspot"
+      ]
+    },
+    "open airplane mode in network & internet": {
+      "path": [
+        "nav_network_and_internet",
+        "item_airplane_mode__nav_network_and_internet"
+      ]
+    },
+    "open proxy in network & internet": {
+      "path": [
+        "nav_network_and_internet",
+        "item_proxy"
+      ]
+    },
+    "open dial-up in network & internet": {
+      "path": [
+        "nav_network_and_internet",
+        "item_dial-up"
+      ]
+    },
+    "open advanced network settings in network & internet": {
+      "path": [
+        "nav_network_and_internet",
+        "item_advanced_network_settings"
+      ]
+    },
+    "open vertical small decrease in network & internet": {
+      "path": [
+        "nav_network_and_internet",
+        "item_vertical_small_decrease"
+      ]
+    },
+    "open vertical large increase in network & internet": {
+      "path": [
+        "nav_network_and_internet",
+        "item_vertical_large_increase"
+      ]
+    },
+    "open vertical small increase in network & internet": {
+      "path": [
+        "nav_network_and_internet",
+        "item_vertical_small_increase"
+      ]
+    },
+    "open personalization settings": {
+      "path": [
+        "nav_personalization"
+      ]
+    },
+    "open windows (light), 1 images in personalization": {
+      "path": [
+        "nav_personalization",
+        "item_windows_(light),_1_images"
+      ]
+    },
+    "open windows (dark), 1 images in personalization": {
+      "path": [
+        "nav_personalization",
+        "item_windows_(dark),_1_images"
+      ]
+    },
+    "open windows spotlight, dynamic images in personalization": {
+      "path": [
+        "nav_personalization",
+        "item_windows_spotlight,_dynamic_images"
+      ]
+    },
+    "open glow, 4 images in personalization": {
+      "path": [
+        "nav_personalization",
+        "item_glow,_4_images"
+      ]
+    },
+    "open captured motion, 4 images in personalization": {
+      "path": [
+        "nav_personalization",
+        "item_captured_motion,_4_images"
+      ]
+    },
+    "open sunrise, 4 images in personalization": {
+      "path": [
+        "nav_personalization",
+        "item_sunrise,_4_images"
+      ]
+    },
+    "open background in personalization": {
+      "path": [
+        "nav_personalization",
+        "item_background"
+      ]
+    },
+    "open colors in personalization": {
+      "path": [
+        "nav_personalization",
+        "item_colors"
+      ]
+    },
+    "open themes in personalization": {
+      "path": [
+        "nav_personalization",
+        "item_themes"
+      ]
+    },
+    "open dynamic lighting in personalization": {
+      "path": [
+        "nav_personalization",
+        "item_dynamic_lighting"
+      ]
+    },
+    "open lock screen in personalization": {
+      "path": [
+        "nav_personalization",
+        "item_lock_screen"
+      ]
+    },
+    "open text input in personalization": {
+      "path": [
+        "nav_personalization",
+        "item_text_input"
+      ]
+    },
+    "open start in personalization": {
+      "path": [
+        "nav_personalization",
+        "item_start"
+      ]
+    },
+    "open taskbar in personalization": {
+      "path": [
+        "nav_personalization",
+        "item_taskbar"
+      ]
+    },
+    "open vertical small decrease in personalization": {
+      "path": [
+        "nav_personalization",
+        "item_vertical_small_decrease__nav_personalization"
+      ]
+    },
+    "open vertical large increase in personalization": {
+      "path": [
+        "nav_personalization",
+        "item_vertical_large_increase__nav_personalization"
+      ]
+    },
+    "open vertical small increase in personalization": {
+      "path": [
+        "nav_personalization",
+        "item_vertical_small_increase__nav_personalization"
+      ]
+    },
+    "open apps settings": {
+      "path": [
+        "nav_apps"
+      ]
+    },
+    "open installed apps in apps": {
+      "path": [
+        "nav_apps",
+        "item_installed_apps"
+      ]
+    },
+    "open advanced app settings in apps": {
+      "path": [
+        "nav_apps",
+        "item_advanced_app_settings"
+      ]
+    },
+    "open default apps in apps": {
+      "path": [
+        "nav_apps",
+        "item_default_apps"
+      ]
+    },
+    "open actions in apps": {
+      "path": [
+        "nav_apps",
+        "item_actions"
+      ]
+    },
+    "open offline maps in apps": {
+      "path": [
+        "nav_apps",
+        "item_offline_maps"
+      ]
+    },
+    "open apps for websites in apps": {
+      "path": [
+        "nav_apps",
+        "item_apps_for_websites"
+      ]
+    },
+    "open video playback in apps": {
+      "path": [
+        "nav_apps",
+        "item_video_playback"
+      ]
+    },
+    "open startup in apps": {
+      "path": [
+        "nav_apps",
+        "item_startup"
+      ]
+    },
+    "open resume in apps": {
+      "path": [
+        "nav_apps",
+        "item_resume"
+      ]
+    },
+    "open vertical small decrease in apps": {
+      "path": [
+        "nav_apps",
+        "item_vertical_small_decrease__nav_apps"
+      ]
+    },
+    "open vertical large increase in apps": {
+      "path": [
+        "nav_apps",
+        "item_vertical_large_increase__nav_apps"
+      ]
+    },
+    "open vertical small increase in apps": {
+      "path": [
+        "nav_apps",
+        "item_vertical_small_increase__nav_apps"
+      ]
+    },
+    "open accounts settings": {
+      "path": [
+        "nav_accounts"
+      ]
+    },
+    "open rewards manage rewards in accounts": {
+      "path": [
+        "nav_accounts",
+        "item_rewards_manage_rewards"
+      ]
+    },
+    "open learn more in accounts": {
+      "path": [
+        "nav_accounts",
+        "item_learn_more"
+      ]
+    },
+    "open close in accounts": {
+      "path": [
+        "nav_accounts",
+        "item_close"
+      ]
+    },
+    "open \ue010 in accounts": {
+      "path": [
+        "nav_accounts",
+        "item_\ue010"
+      ]
+    },
+    "open view product details. in accounts": {
+      "path": [
+        "nav_accounts",
+        "item_view_product_details."
+      ]
+    },
+    "open \ue013 in accounts": {
+      "path": [
+        "nav_accounts",
+        "item_\ue013"
+      ]
+    },
+    "open time & language settings": {
+      "path": [
+        "nav_time_and_language"
+      ]
+    },
+    "open time zone in time & language": {
+      "path": [
+        "nav_time_and_language",
+        "item_time_zone"
+      ]
+    },
+    "open region in time & language": {
+      "path": [
+        "nav_time_and_language",
+        "item_region"
+      ]
+    },
+    "open date & time in time & language": {
+      "path": [
+        "nav_time_and_language",
+        "item_date_and_time"
+      ]
+    },
+    "open language & region in time & language": {
+      "path": [
+        "nav_time_and_language",
+        "item_language_and_region"
+      ]
+    },
+    "open typing in time & language": {
+      "path": [
+        "nav_time_and_language",
+        "item_typing"
+      ]
+    },
+    "open speech in time & language": {
+      "path": [
+        "nav_time_and_language",
+        "item_speech"
+      ]
+    },
+    "open gaming settings": {
+      "path": [
+        "nav_gaming"
+      ]
+    },
+    "open xbox mode in gaming": {
+      "path": [
+        "nav_gaming",
+        "item_xbox_mode"
+      ]
+    },
+    "open game bar in gaming": {
+      "path": [
+        "nav_gaming",
+        "item_game_bar"
+      ]
+    },
+    "open captures in gaming": {
+      "path": [
+        "nav_gaming",
+        "item_captures"
+      ]
+    },
+    "open game mode in gaming": {
+      "path": [
+        "nav_gaming",
+        "item_game_mode"
+      ]
+    },
+    "open vertical small decrease in gaming": {
+      "path": [
+        "nav_gaming",
+        "item_vertical_small_decrease__nav_gaming"
+      ]
+    },
+    "open vertical large increase in gaming": {
+      "path": [
+        "nav_gaming",
+        "item_vertical_large_increase__nav_gaming"
+      ]
+    },
+    "open vertical small increase in gaming": {
+      "path": [
+        "nav_gaming",
+        "item_vertical_small_increase__nav_gaming"
+      ]
+    },
+    "open accessibility settings": {
+      "path": [
+        "nav_accessibility"
+      ]
+    },
+    "open text size in accessibility": {
+      "path": [
+        "nav_accessibility",
+        "item_text_size"
+      ]
+    },
+    "open visual effects in accessibility": {
+      "path": [
+        "nav_accessibility",
+        "item_visual_effects"
+      ]
+    },
+    "open mouse pointer and touch in accessibility": {
+      "path": [
+        "nav_accessibility",
+        "item_mouse_pointer_and_touch"
+      ]
+    },
+    "open text cursor in accessibility": {
+      "path": [
+        "nav_accessibility",
+        "item_text_cursor"
+      ]
+    },
+    "open magnifier in accessibility": {
+      "path": [
+        "nav_accessibility",
+        "item_magnifier"
+      ]
+    },
+    "open color filters in accessibility": {
+      "path": [
+        "nav_accessibility",
+        "item_color_filters"
+      ]
+    },
+    "open screen tint in accessibility": {
+      "path": [
+        "nav_accessibility",
+        "item_screen_tint"
+      ]
+    },
+    "open contrast themes in accessibility": {
+      "path": [
+        "nav_accessibility",
+        "item_contrast_themes"
+      ]
+    },
+    "open narrator in accessibility": {
+      "path": [
+        "nav_accessibility",
+        "item_narrator"
+      ]
+    },
+    "open audio in accessibility": {
+      "path": [
+        "nav_accessibility",
+        "item_audio"
+      ]
+    },
+    "open vertical small decrease in accessibility": {
+      "path": [
+        "nav_accessibility",
+        "item_vertical_small_decrease__nav_accessibility"
+      ]
+    },
+    "open vertical large increase in accessibility": {
+      "path": [
+        "nav_accessibility",
+        "item_vertical_large_increase__nav_accessibility"
+      ]
+    },
+    "open vertical small increase in accessibility": {
+      "path": [
+        "nav_accessibility",
+        "item_vertical_small_increase__nav_accessibility"
+      ]
+    },
+    "open privacy & security settings": {
+      "path": [
+        "nav_privacy_and_security"
+      ]
+    },
+    "open windows security in privacy & security": {
+      "path": [
+        "nav_privacy_and_security",
+        "item_windows_security"
+      ]
+    },
+    "open find my device in privacy & security": {
+      "path": [
+        "nav_privacy_and_security",
+        "item_find_my_device"
+      ]
+    },
+    "open device encryption in privacy & security": {
+      "path": [
+        "nav_privacy_and_security",
+        "item_device_encryption"
+      ]
+    },
+    "open recommendations & offers in privacy & security": {
+      "path": [
+        "nav_privacy_and_security",
+        "item_recommendations_and_offers"
+      ]
+    },
+    "open speech in privacy & security": {
+      "path": [
+        "nav_privacy_and_security",
+        "item_speech__nav_privacy_and_security"
+      ]
+    },
+    "open inking & typing personalization in privacy & security": {
+      "path": [
+        "nav_privacy_and_security",
+        "item_inking_and_typing_personalization"
+      ]
+    },
+    "open diagnostics & feedback in privacy & security": {
+      "path": [
+        "nav_privacy_and_security",
+        "item_diagnostics_and_feedback"
+      ]
+    },
+    "open search in privacy & security": {
+      "path": [
+        "nav_privacy_and_security",
+        "item_search"
+      ]
+    },
+    "open location in privacy & security": {
+      "path": [
+        "nav_privacy_and_security",
+        "item_location"
+      ]
+    },
+    "open camera in privacy & security": {
+      "path": [
+        "nav_privacy_and_security",
+        "item_camera"
+      ]
+    },
+    "open vertical small decrease in privacy & security": {
+      "path": [
+        "nav_privacy_and_security",
+        "item_vertical_small_decrease__nav_privacy_and_security"
+      ]
+    },
+    "open vertical large increase in privacy & security": {
+      "path": [
+        "nav_privacy_and_security",
+        "item_vertical_large_increase__nav_privacy_and_security"
+      ]
+    },
+    "open vertical small increase in privacy & security": {
+      "path": [
+        "nav_privacy_and_security",
+        "item_vertical_small_increase__nav_privacy_and_security"
+      ]
+    },
+    "open windows update settings": {
+      "path": [
+        "nav_windows_update"
+      ]
+    },
+    "open check for updates in windows update": {
+      "path": [
+        "nav_windows_update",
+        "item_check_for_updates"
+      ]
+    },
+    "open be among the first to get the latest non-security updates, fixes, and improvements as they roll out. learn more in windows update": {
+      "path": [
+        "nav_windows_update",
+        "item_be_among_the_first_to_get_the_latest_non-security_updates,_fixes,_and_improvements_as_they_roll_out._learn_more"
+      ]
+    },
+    "open get the latest updates as soon as they're available in windows update": {
+      "path": [
+        "nav_windows_update",
+        "item_get_the_latest_updates_as_soon_as_they're_available"
+      ]
+    },
+    "open select the date to pause updates until.learn more in windows update": {
+      "path": [
+        "nav_windows_update",
+        "item_select_the_date_to_pause_updates_until.learn_more"
+      ]
+    },
+    "open pick a date in windows update": {
+      "path": [
+        "nav_windows_update",
+        "item_pick_a_date"
+      ]
+    },
+    "open update history in windows update": {
+      "path": [
+        "nav_windows_update",
+        "item_update_history"
+      ]
+    },
+    "open advanced options in windows update": {
+      "path": [
+        "nav_windows_update",
+        "item_advanced_options"
+      ]
+    },
+    "open windows insider program in windows update": {
+      "path": [
+        "nav_windows_update",
+        "item_windows_insider_program"
+      ]
+    },
+    "open windows update is committed to helping reduce carbon emissions. learn more in windows update": {
+      "path": [
+        "nav_windows_update",
+        "item_windows_update_is_committed_to_helping_reduce_carbon_emissions._learn_more"
+      ]
+    },
+    "open get help in windows update": {
+      "path": [
+        "nav_windows_update",
+        "item_get_help"
+      ]
+    },
+    "open give feedback in windows update": {
+      "path": [
+        "nav_windows_update",
+        "item_give_feedback"
+      ]
+    }
+  }
+}

@@ -292,17 +292,19 @@ Agent `notepad` supports:
     def _action_open(self) -> dict:
         """Open or find Notepad."""
         import subprocess
+        import time
         start = time.time()
-
+        
         # Check if already running
         window = self.get_window()
         if window is not None:
             window_manager.focus_window(window)
             return self._result("success", "open", "Notepad already running, focused", start)
 
-        # Launch Notepad via subprocess (Application.start hangs on Win11 UWP Notepad)
+        # Launch Notepad via os.startfile to completely detach it from Claude Desktop's pipes/job objects
         try:
-            subprocess.Popen("notepad.exe")
+            import os
+            os.startfile("notepad.exe")
         except Exception as e:
             return self._result("failure", "open", f"Failed to launch: {e}", start)
 

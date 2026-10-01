@@ -25,37 +25,50 @@ def find_window(
     for UWP/packaged apps like Win11 Notepad.
     """
     desktop = Desktop(backend="uia")
-    for window in desktop.windows():
-        try:
-            info = window.element_info
-            wt = (info.name or "").strip()
-            wt_lower = wt.lower()
-            cls = (info.class_name or "").strip()
-
-            if class_name:
-                if class_name.lower() != cls.lower():
-                    continue
-
-            if title_contains:
-                tc_lower = title_contains.lower()
-                # Safeguard: if looking for Notepad, do not match editor tabs like "notepad.json - VS Code"
-                if tc_lower == "notepad":
-                    is_real_notepad = (
-                        wt_lower == "notepad"
-                        or wt_lower.endswith("- notepad")
-                        or wt_lower.endswith("– notepad")
-                        or wt_lower.endswith("— notepad")
-                        or cls.lower() == "notepad"
-                    )
-                    if not is_real_notepad:
+    
+    # Fast path: use pywinauto's built-in filtering which is much faster
+    # than fetching all windows and filtering in Python
+    try:
+        if title_contains:
+            # Special case for notepad to avoid matching VS Code tabs
+            if title_contains.lower() == "notepad":
+                windows = desktop.windows(title_re="(?i).*notepad.*")
+                for window in windows:
+                    info = window.element_info
+                    wt = (info.name or "").strip().lower()
+                    cls = (info.class_name or "").strip().lower()
+                    if class_name and class_name.lower() != cls:
                         continue
-                elif tc_lower not in wt_lower:
-                    continue
-
-            # Return wrapped window using exact handle
-            return desktop.window(handle=info.handle)
-        except Exception:
-            continue
+                    
+                    is_real_notepad = (
+                        wt == "notepad"
+                        or wt.endswith("- notepad")
+                        or wt.endswith("– notepad")
+                        or wt.endswith("— notepad")
+                        or cls == "notepad"
+                    )
+                    if is_real_notepad:
+                        return desktop.window(handle=info.handle)
+            else:
+                windows = desktop.windows(title_re=f"(?i).*{title_contains}.*")
+                for window in windows:
+                    info = window.element_info
+                    cls = (info.class_name or "").strip().lower()
+                    if class_name and class_name.lower() != cls:
+                        continue
+                    return desktop.window(handle=info.handle)
+                    
+        elif class_name:
+            windows = desktop.windows(class_name=class_name)
+            if windows:
+                return desktop.window(handle=windows[0].element_info.handle)
+                
+        else:
+            # Fallback to scanning everything (slow)
+            for window in desktop.windows():
+                return desktop.window(handle=window.element_info.handle)
+    except Exception:
+        pass
 
     return None
 
@@ -108,14 +121,23 @@ def launch_application(
         except Exception:
             pass
     except Exception as e:
-        print(f"[WindowManager] Application.start failed: {e}")
+        import sys
+        print(f"[WindowManager] Application.start failed: {e}", file=sys.stderr)
 
     # Strategy 2: Fall back to subprocess + connect by title
     try:
-        subprocess.Popen(executable)
+        import subprocess
+        subprocess.Popen(
+            executable, 
+            creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
         time.sleep(1.5)
     except Exception as e:
-        print(f"[WindowManager] subprocess failed: {e}")
+        import sys
+        print(f"[WindowManager] subprocess failed: {e}", file=sys.stderr)
         return None
 
     # Wait for window to appear via connect
@@ -138,7 +160,8 @@ def launch_application(
     if window is not None:
         return window
 
-    print(f"[WindowManager] Timeout waiting for window: {wait_title}")
+    import sys
+    print(f"[WindowManager] Timeout waiting for window: {wait_title}", file=sys.stderr)
     return None
 
 
@@ -166,7 +189,8 @@ def focus_window(window) -> bool:
         time.sleep(0.2)
         return True
     except Exception as e:
-        print(f"[WindowManager] Failed to focus window: {e}")
+        import sys
+        print(f"[WindowManager] Failed to focus window: {e}", file=sys.stderr)
         return False
 
 
@@ -181,7 +205,8 @@ def close_window(window) -> bool:
         window.close()
         return True
     except Exception as e:
-        print(f"[WindowManager] Failed to close window: {e}")
+        import sys
+        print(f"[WindowManager] Failed to close window: {e}", file=sys.stderr)
         return False
 
 
