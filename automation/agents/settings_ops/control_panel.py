@@ -1,9 +1,10 @@
 """Classic Control Panel tasks ("God Mode" folder): list them and open one by name."""
 import difflib
 import json
+import time
 
 from . import ActionError
-from . import system
+from . import system, ui
 
 FOLDER = "shell:::{ED7BA470-8E54-465E-825C-99712043E01C}"
 _cache = None  # parsed task list, kept for the process lifetime
@@ -53,6 +54,19 @@ def _invoke(path):
         raise ActionError(f'Windows could not open that Control Panel task: {out[:200]}')
 
 
+def _new_window(before, before_foreground, timeout=6):
+    """Title of the window the task opened (a new one, a retitled one, or one brought to the front), else None."""
+    deadline = time.monotonic() + timeout
+    while True:
+        now, front = ui.top_windows(), ui.foreground()
+        for handle, (kind, title) in now.items():
+            if before.get(handle) != (kind, title) or front == handle != before_foreground:
+                return 'Settings' if kind == ui.SETTINGS_CLASS else title
+        if time.monotonic() > deadline:
+            return None
+        time.sleep(.3)
+
+
 def open_task(name):
     name = str(name or '').strip()
     if not name:
@@ -70,5 +84,10 @@ def open_task(name):
         names = sorted({t['name'] for t in hits})[:10]
         raise ActionError(f"'{name}' matches several Control Panel tasks; pass one exactly: {'; '.join(names)}.")
     task = next(iter(distinct.values()))
+    before, front = ui.top_windows(), ui.foreground()
     _invoke(task['path'])  # Opens the task's own window/page; it does not change any value.
-    return {'opened': task['name'], 'group': task['group']}
+    window = _new_window(before, front)
+    note = {'Settings': 'This task opened the Settings app: use read_page / set_toggle / click WITHOUT the window param.',
+            None: 'No window was detected; if one is on screen, pass its exact title as window.'}
+    return {'opened': task['name'], 'group': task['group'], 'window': window,
+            **({'note': note[window]} if window in note else {})}

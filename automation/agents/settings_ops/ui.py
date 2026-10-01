@@ -62,11 +62,13 @@ PAGES = {
 }
 
 # Buttons whose effect cannot be undone from Settings; require confirm=true.
-RISKY = re.compile(r'\b(reset|remove|delete|uninstall|erase|forget|format|sign out|clean ?up|restart|shut ?down|wipe|disconnect)\b', re.I)
+RISKY = re.compile(r'\b(reset|restore|remove|delete|uninstall|erase|forget|format|sign out|clean ?up|restart|shut ?down|wipe|disconnect)\b', re.I)
 
 _TYPES = {'ButtonControl', 'CheckBoxControl', 'ComboBoxControl', 'RadioButtonControl', 'HyperlinkControl',
-          'ListItemControl', 'SliderControl', 'GroupControl'}
+          'ListItemControl', 'SliderControl', 'GroupControl', 'EditControl', 'SpinnerControl', 'TabItemControl'}
 _CHROME = {'minimize', 'maximize', 'restore', 'close', 'navigationviewbackbutton', 'userprofilecontrolbutton'}
+_CP_CLASSES = ('CabinetWClass', '#32770')  # Explorer-hosted Control Panel pages, classic dialogs
+SETTINGS_CLASS = 'ApplicationFrameWindow'
 
 
 def resolve_page(page):
@@ -83,15 +85,54 @@ def resolve_page(page):
     return match, PAGES[match]
 
 
-def _window():
+def _window(title=None):
+    """The Settings window (title None), else the Control Panel window whose title contains `title`."""
     import uiautomation as auto
+    wanted = str(title or '').strip().casefold()
+    if wanted in ('', 'settings'):
+        for window in auto.GetRootControl().GetChildren():
+            try:
+                if window.ClassName == SETTINGS_CLASS and 'settings' in (window.Name or '').casefold():
+                    return window
+            except Exception:
+                continue
+        return None
+    open_titles, found = [], []
     for window in auto.GetRootControl().GetChildren():
         try:
-            if window.ClassName == 'ApplicationFrameWindow' and 'settings' in (window.Name or '').casefold():
-                return window
+            if window.ClassName in _CP_CLASSES and window.Name:
+                open_titles.append(window.Name)
+                if wanted in window.Name.casefold():
+                    found.append(window)
         except Exception:
             continue
-    return None
+    found = [w for w in found if w.Name.casefold() == wanted] or found
+    if not found:
+        raise ActionError(f"No open Control Panel window titled '{title}'. Open windows: {', '.join(dict.fromkeys(open_titles)) or 'none'}.")
+    return found[0]  # the desktop lists windows front to back, so this is the foreground-most
+
+
+def top_windows():
+    """{handle: (class, title)} of the open classic Control Panel windows and the Settings app."""
+    import uiautomation as auto
+    windows = {}
+    for window in auto.GetRootControl().GetChildren():
+        try:
+            if window.ClassName in _CP_CLASSES and window.Name:
+                windows[window.NativeWindowHandle] = (window.ClassName, window.Name)
+        except Exception:
+            continue
+    if settings := _window():
+        windows[settings.NativeWindowHandle] = (SETTINGS_CLASS, 'Settings')
+    return windows
+
+
+def foreground():
+    import uiautomation as auto
+    try:
+        return auto.GetForegroundControl().GetTopLevelControl().NativeWindowHandle
+    except Exception:
+        return 0
 
 
 def open_page(page='home', timeout=8):
@@ -114,34 +155,64 @@ def _toggle_state(control):
         return None
 
 
-def _controls():
-    """Visible, named, actionable controls in the Settings content area."""
+def _label(control):
+    """Own name, else the name of the control that labels it (classic dialogs), else ''."""
     import uiautomation as auto
-    window = _window()
-    if window is None:
+    if control.Name:
+        return control.Name
+    try:
+        labeller = control.GetPropertyValue(auto.PropertyId.LabeledByProperty)
+        return (labeller.Name or '') if labeller else ''
+    except Exception:
+        return ''
+
+
+def _controls(window=None):
+    """Visible, labelled, actionable controls in the Settings content area or the named Control Panel window."""
+    import uiautomation as auto
+    root = _window(window)
+    if root is None:
         raise ActionError('Settings is not open.')
-    for control, _depth in auto.WalkControl(window, maxDepth=30):
+    if window:
         try:
-            if (control.ControlTypeName in _TYPES and control.Name and not control.IsOffscreen
+            driveable = bool(root.GetChildren())
+        except Exception:
+            driveable = False
+        if not driveable:
+            raise ActionError(f"'{root.Name}' runs with administrator rights and cannot be driven by AURA. The user must change it themselves.")
+    for control, _depth in auto.WalkControl(root, maxDepth=30):
+        try:
+            if (control.ControlTypeName in _TYPES and _label(control) and not control.IsOffscreen
                     and (control.AutomationId or '').casefold() not in _CHROME):
                 yield control
         except Exception:
             continue
 
 
+def _value(control):
+    import uiautomation as auto
+    for pattern_id in (auto.PatternId.RangeValuePattern, auto.PatternId.ValuePattern):
+        pattern = control.GetPattern(pattern_id)
+        if pattern and pattern.Value not in ('', None):
+            return pattern.Value
+    selection = control.GetPattern(auto.PatternId.SelectionPattern)
+    return selection.GetSelection()[0].Name if selection else None
+
+
 def _describe(control):
     import uiautomation as auto
-    item = {'name': control.Name, 'type': control.ControlTypeName.removesuffix('Control')}
+    kind = control.ControlTypeName
+    item = {'name': _label(control), 'type': kind.removesuffix('Control')}
     state = _toggle_state(control)
     if state:
         item['state'] = state
     try:
-        if control.ControlTypeName == 'ComboBoxControl':
-            pattern = control.GetPattern(auto.PatternId.ValuePattern)
-            selection = control.GetPattern(auto.PatternId.SelectionPattern)
-            item['value'] = pattern.Value if pattern else selection.GetSelection()[0].Name
-        elif control.ControlTypeName == 'SliderControl':
-            item['value'] = control.GetPattern(auto.PatternId.RangeValuePattern).Value
+        if kind in ('ComboBoxControl', 'SliderControl', 'SpinnerControl', 'EditControl'):
+            item['value'] = _value(control)
+        elif kind in ('TabItemControl', 'RadioButtonControl', 'ListItemControl'):
+            pattern = control.GetPattern(auto.PatternId.SelectionItemPattern)
+            if pattern and pattern.IsSelected:
+                item['selected'] = True
     except Exception:
         pass
     return item
@@ -155,9 +226,9 @@ def _in_nav(control):
     return False
 
 
-def read_page():
+def read_page(window=None):
     seen, items = set(), []
-    for control in _controls():
+    for control in _controls(window):
         if _in_nav(control):
             continue
         item = _describe(control)
@@ -167,77 +238,95 @@ def read_page():
         if (key := (item['name'], item['type'])) not in seen:
             seen.add(key)
             items.append(item)
-    return {'controls': items}
+    return {'controls': items, **({'window': _window(window).Name} if window else {})}
 
 
-def _find(name, accept, timeout=6):
+def _find(name, accept, window=None, timeout=6):
     """Best-named control passing `accept`; polls because pages render late."""
     wanted, deadline = str(name or '').strip().casefold(), time.monotonic() + timeout
     if not wanted:
         raise ActionError('name of the control is required.')
     while True:
-        candidates = [control for control in _controls() if accept(control)]
+        candidates = [(_label(control), control) for control in _controls(window) if accept(control)]
         for test in (lambda n: n == wanted, lambda n: n.startswith(wanted), lambda n: wanted in n):
-            matches = [control for control in candidates if test(control.Name.casefold())]
+            matches = [control for label, control in candidates if test(label.casefold())]
             if matches:
                 return matches[0]
         if time.monotonic() > deadline:
-            names = sorted({control.Name for control in candidates})
-            raise ActionError(f"No matching control named '{name}' on this Settings page. Available: {', '.join(names) or 'none'}.")
+            names = sorted({label for label, _ in candidates})
+            raise ActionError(f"No matching control named '{name}' in {'this window' if window else 'this Settings page'}. Available: {', '.join(names) or 'none'}.")
         time.sleep(.3)
 
 
-def get_toggle(name):
-    control = _find(name, lambda control: _toggle_state(control) is not None)
-    return {'name': control.Name, 'state': _toggle_state(control)}
+def _has_toggle(control):
+    return _toggle_state(control) is not None
 
 
-def set_toggle(name, on):
+def get_toggle(name, window=None):
+    control = _find(name, _has_toggle, window)
+    return {'name': _label(control), 'state': _toggle_state(control)}
+
+
+def set_toggle(name, on, window=None):
     import uiautomation as auto
     wanted = 'on' if on else 'off'
-    control = _find(name, lambda control: _toggle_state(control) is not None)
-    label = control.Name
+    control = _find(name, _has_toggle, window)
+    label = _label(control)
     if _toggle_state(control) != wanted:
         control.GetPattern(auto.PatternId.TogglePattern).Toggle()
         deadline = time.monotonic() + 4
         # Re-find: Settings often rebuilds the row after a toggle.
-        while (state := _toggle_state(_find(label, lambda control: _toggle_state(control) is not None))) != wanted:
+        while (state := _toggle_state(_find(label, _has_toggle, window))) != wanted:
             if time.monotonic() > deadline:
                 raise ActionError(f"'{label}' is still {state} after toggling; Windows may have blocked the change.")
             time.sleep(.3)
     return {'name': label, 'state': wanted}
 
 
-def click(name, confirm=False):
+def click(name, confirm=False, window=None):
     import uiautomation as auto
-    control = _find(name, lambda control: control.ControlTypeName in ('ButtonControl', 'HyperlinkControl', 'ListItemControl', 'RadioButtonControl'))
-    if RISKY.search(control.Name) and not confirm:
-        raise ActionError(f"'{control.Name}' may be irreversible. Ask the user, then repeat with confirm=true.")
+    control = _find(name, lambda control: control.ControlTypeName in ('ButtonControl', 'HyperlinkControl', 'ListItemControl',
+                                                                     'RadioButtonControl', 'TabItemControl'), window)
+    label = _label(control)
+    if RISKY.search(label) and not confirm:
+        raise ActionError(f"'{label}' may be irreversible. Ask the user, then repeat with confirm=true.")
     for pattern_id, act in ((auto.PatternId.InvokePattern, 'Invoke'), (auto.PatternId.SelectionItemPattern, 'Select'),
-                            (auto.PatternId.ExpandCollapsePattern, 'Expand')):
+                            (auto.PatternId.ExpandCollapsePattern, 'Expand'),
+                            (auto.PatternId.LegacyIAccessiblePattern, 'DoDefaultAction')):  # last non-mouse resort
         pattern = control.GetPattern(pattern_id)
         if pattern:
             getattr(pattern, act)()
-            return {'clicked': control.Name}
-    raise ActionError(f"'{control.Name}' cannot be activated without moving the mouse.")
+            if act == 'Select':
+                time.sleep(.2)
+                if not pattern.IsSelected:
+                    raise ActionError(f"'{label}' is not selected after clicking it.")
+            return {'clicked': label}
+    raise ActionError(f"'{label}' cannot be activated without moving the mouse.")
 
 
-def select(name, value):
+def select(name, value, window=None):
     """Choose `value` in the dropdown called `name`."""
     import uiautomation as auto
-    combo = _find(name, lambda control: control.ControlTypeName == 'ComboBoxControl')
-    label, wanted = combo.Name, str(value).strip().casefold()
+    combo = _find(name, lambda control: control.ControlTypeName == 'ComboBoxControl', window)
+    label, wanted = _label(combo), str(value).strip().casefold()
     combo.GetPattern(auto.PatternId.ExpandCollapsePattern).Expand()
     time.sleep(.5)
     try:
         # The open list is a popup; it may sit under the combo or under the window.
-        options = [control for root in (combo, _window()) for control, _ in auto.WalkControl(root, maxDepth=30)
+        options = [control for root in (combo, _window(window)) for control, _ in auto.WalkControl(root, maxDepth=30)
                    if control.ControlTypeName == 'ListItemControl' and control.Name and not control.IsOffscreen
                    and control.GetPattern(auto.PatternId.SelectionItemPattern)]
         for test in (lambda n: n == wanted, lambda n: wanted in n):
             for option in options:
                 if test(option.Name.casefold()):
                     option.GetPattern(auto.PatternId.SelectionItemPattern).Select()
+                    time.sleep(.3)
+                    try:
+                        now = _value(combo)
+                    except Exception:
+                        now = None
+                    if now is not None and option.Name.casefold() not in str(now).casefold():
+                        raise ActionError(f"'{label}' shows '{now}' after choosing '{option.Name}'; the change did not stick.")
                     return {'name': label, 'value': option.Name}
         raise ActionError(f"'{label}' has no option '{value}'. Options: {', '.join(dict.fromkeys(o.Name for o in options)) or 'none'}.")
     finally:
@@ -245,3 +334,28 @@ def select(name, value):
             combo.GetPattern(auto.PatternId.ExpandCollapsePattern).Collapse()
         except Exception:
             pass
+
+
+def set_value(name, value, window=None):
+    """Type a value into the edit box / spinner / slider called `name`, then read it back."""
+    import uiautomation as auto
+    accept = lambda control: control.ControlTypeName in ('EditControl', 'SpinnerControl', 'SliderControl')
+    control = _find(name, accept, window)
+    label, text = _label(control), str(value).strip()
+    for pattern_id in (auto.PatternId.RangeValuePattern, auto.PatternId.ValuePattern):
+        if pattern := control.GetPattern(pattern_id):
+            break
+    else:
+        raise ActionError(f"'{label}' cannot be set without moving the mouse.")
+    try:
+        pattern.SetValue(float(text) if pattern_id == auto.PatternId.RangeValuePattern else text)
+    except Exception as error:
+        raise ActionError(f"'{label}' did not accept '{text}': {error}") from None
+    actual = _value(_find(label, accept, window))
+    try:
+        same = float(actual) == float(text)
+    except (TypeError, ValueError):
+        same = str(actual).strip().casefold() == text.casefold()
+    if not same:
+        raise ActionError(f"'{label}' is {actual} after setting {text}; the control rejected or adjusted the value.")
+    return {'name': label, 'value': actual}

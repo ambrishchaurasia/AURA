@@ -1,6 +1,7 @@
 """Offline checks for the settings agent: run with `python -m pytest tests` from the repo root."""
 import asyncio
 import ctypes as ct
+import itertools
 import sys
 import types
 
@@ -102,6 +103,9 @@ def fake_panel(monkeypatch):
     opened = []
     monkeypatch.setattr(control_panel, '_tasks', lambda: FAKE_TASKS)
     monkeypatch.setattr(control_panel, '_invoke', opened.append)
+    snapshots = itertools.cycle([{}, {7: ('CabinetWClass', 'Power Options')}])  # before / after each open
+    monkeypatch.setattr(ui, 'top_windows', lambda: next(snapshots))
+    monkeypatch.setattr(ui, 'foreground', lambda: 0)
     return opened
 
 
@@ -166,3 +170,87 @@ def test_power_timeouts_parse_set_and_readback_mismatch(monkeypatch):
     stuck = SettingsAgent().execute('set_power_timeout', {'what': 'display', 'power': 'plugged_in', 'minutes': 1})
     assert stuck['status'] == 'failure' and 'did not change' in stuck['details']
     assert SettingsAgent().execute('set_power_timeout', {'what': 'display', 'power': 'plugged_in', 'minutes': 601})['status'] == 'failure'
+
+
+def test_open_task_returns_new_retitled_or_settings_window(fake_panel, monkeypatch):
+    assert SettingsAgent().execute('open_control_panel_task', {'name': 'edit power plan'})['data']['window'] == 'Power Options'
+    before = {7: ('CabinetWClass', 'Power Options'), 9: ('ApplicationFrameWindow', 'Settings')}
+    for after, wanted in (({**before, 8: ('#32770', 'Mouse Properties')}, 'Mouse Properties'),  # new window
+                          ({**before, 7: ('CabinetWClass', 'Edit Plan Settings')}, 'Edit Plan Settings'),  # reused Explorer window
+                          ({**before, 10: ('ApplicationFrameWindow', 'Settings')}, 'Settings')):  # Settings app
+        snapshots = iter([before, after])
+        monkeypatch.setattr(ui, 'top_windows', lambda: next(snapshots))
+        assert control_panel.open_task('Change mouse settings')['window'] == wanted
+
+
+class FakeWindow:
+    def __init__(self, title, cls, children=()):
+        self.Name, self.ClassName, self.NativeWindowHandle, self._children = title, cls, hash(title), list(children)
+
+    def GetChildren(self):
+        return self._children
+
+
+def fake_desktop(monkeypatch, windows):
+    monkeypatch.setitem(sys.modules, 'uiautomation', types.SimpleNamespace(GetRootControl=lambda: FakeWindow('', '', windows)))
+
+
+def test_window_resolution_none_exact_ambiguous_missing(monkeypatch):
+    settings, sound, sound_set, mouse, other = (FakeWindow('Settings', 'ApplicationFrameWindow'), FakeWindow('Sound', '#32770'),
+                                                FakeWindow('Sound Settings', 'CabinetWClass'), FakeWindow('Mouse Properties', '#32770'),
+                                                FakeWindow('Notepad', 'Notepad'))
+    fake_desktop(monkeypatch, [other, sound_set, sound, mouse, settings])
+    assert ui._window() is settings and ui._window('settings') is settings  # no title: the Settings app
+    assert ui._window('mouse prop') is mouse  # substring, casefold
+    assert ui._window('sound') is sound  # exact title beats the earlier, foreground-most partial match
+    fake_desktop(monkeypatch, [sound_set, mouse, FakeWindow('Sound Mixer', '#32770')])
+    assert ui._window('sound') is sound_set  # ambiguous: foreground-most
+    with pytest.raises(ActionError, match='Sound Settings.*Mouse Properties') as error:
+        ui._window('printers')
+    assert 'Notepad' not in str(error.value)
+
+
+def test_window_param_bypasses_settings_app(monkeypatch):
+    calls = []
+    monkeypatch.setattr(ui, '_window', lambda title=None: None)  # Settings is not open
+    monkeypatch.setattr(ui, 'open_page', lambda page: calls.append(page))
+    monkeypatch.setattr(ui, 'get_toggle', lambda name, window=None: calls.append((name, window)) or {'name': name, 'state': 'on'})
+    agent = SettingsAgent()
+    assert agent.execute('get_toggle', {'window': 'Mouse Properties', 'name': 'Display pointer trails'})['status'] == 'success'
+    assert calls == [('Display pointer trails', 'Mouse Properties')]
+    assert agent.execute('get_toggle', {'name': 'x'})['status'] == 'failure'  # no window, no page: Settings is required
+    assert all('window' in ACTIONS[name][2] for name in ('read_page', 'get_toggle', 'set_toggle', 'select_option', 'set_value', 'click'))
+
+
+class FakeEdit:
+    ControlTypeName, Name, AutomationId, IsOffscreen = 'EditControl', 'Lines', '', False
+
+    def __init__(self, sticks):
+        self.value, self.sticks = '3', sticks
+
+    def GetPattern(self, pattern_id):
+        return self if pattern_id == 'value' else None
+
+    Value = property(lambda self: self.value)
+
+    def SetValue(self, text):
+        if self.sticks:
+            self.value = text
+
+
+def test_set_value_reads_back_and_reports_mismatch(monkeypatch):
+    edit = FakeEdit(sticks=True)
+    patterns = types.SimpleNamespace(RangeValuePattern='range', ValuePattern='value', SelectionPattern='selection')
+    monkeypatch.setitem(sys.modules, 'uiautomation', types.SimpleNamespace(PatternId=patterns))
+    monkeypatch.setattr(ui, '_controls', lambda window=None: [edit])
+    assert SettingsAgent().execute('set_value', {'window': 'Mouse Properties', 'name': 'lines', 'value': 5})['data']['value'] == '5'
+    edit.sticks = False
+    refused = SettingsAgent().execute('set_value', {'window': 'Mouse Properties', 'name': 'lines', 'value': 9})
+    assert refused['status'] == 'failure' and 'is 5 after setting 9' in refused['details']
+
+
+def test_elevated_window_is_reported(monkeypatch):
+    monkeypatch.setitem(sys.modules, 'uiautomation', types.SimpleNamespace())
+    monkeypatch.setattr(ui, '_window', lambda title=None: FakeWindow('Services', '#32770'))
+    result = SettingsAgent().execute('read_page', {'window': 'Services'})
+    assert result['status'] == 'failure' and 'administrator rights' in result['details']
