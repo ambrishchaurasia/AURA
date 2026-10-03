@@ -12,7 +12,7 @@ from __future__ import annotations
 import time
 
 from automation.core.base_agent import BaseAgent
-from automation.agents.settings_ops import ActionError, displays, radios, system, ui
+from automation.agents.settings_ops import ActionError, control_panel, displays, radios, system, ui
 
 
 def _on(params: dict) -> bool:
@@ -25,8 +25,10 @@ def _on(params: dict) -> bool:
 
 
 def _on_page(operation):
-    """Run a named-control operation, first opening params['page'] if given."""
+    """Run a named-control operation: in params['window'] if given, else on the Settings page params['page'] (opened first)."""
     def run(params):
+        if params.get("window"):  # a classic Control Panel window: Settings is not involved
+            return operation(params)
         if params.get("page"):
             ui.open_page(params["page"])
         elif ui._window() is None:
@@ -92,6 +94,16 @@ ACTIONS = {
     "get_battery": (lambda p: system.get_battery(), "Read battery level, charging and battery saver state", {}, "safe"),
     "list_power_plans": (lambda p: system.list_power_plans(), "List power plans and the active one", {}, "safe"),
     "set_power_plan": (lambda p: system.set_power_plan(p.get("name", "")), "Activate a power plan by name", {"name": "string"}, "safe"),
+    "get_power_timeouts": (lambda p: system.get_power_timeouts(), "Read minutes before the display turns off and before the PC sleeps, plugged in and on battery (0 = never)", {}, "safe"),
+    "set_power_timeout": (lambda p: system.set_power_timeout(p.get("what"), p.get("power"), p.get("minutes")),
+                          "Set minutes before the display turns off or the PC sleeps (0 = never) and verify it",
+                          {"what": "display|sleep", "power": "plugged_in|battery", "minutes": "int 0-600"}, "safe"),
+    "list_control_panel_tasks": (lambda p: control_panel.list_tasks(str(p.get("query", ""))),
+                                 "Classic Control Panel: search its tasks by word (e.g. 'power', 'sleep', 'mouse'); no query lists all. Use the dedicated actions first",
+                                 {"query": "string (optional)"}, "safe"),
+    "open_control_panel_task": (lambda p: control_panel.open_task(p.get("name")),
+                                "Open one classic Control Panel task by its exact name from list_control_panel_tasks. Opens its window and returns its title as `window` (pass it to the control actions); it changes no value itself",
+                                {"name": "string"}, "safe"),
     "storage_status": (lambda p: system.storage_status(), "Read free space on each drive", {}, "safe"),
     "system_info": (lambda p: system.system_info(), "Read PC name, Windows version and uptime", {}, "safe"),
     "check_updates": (_check_updates, "Open Windows Update and start checking for updates", {}, "safe"),
@@ -99,17 +111,23 @@ ACTIONS = {
     "open": (lambda p: ui.open_page("home"), "Open Settings home", {}, "safe"),
     "navigate": (lambda p: ui.open_page(p.get("page", "home")), "Open a Settings page by name (e.g. 'sound', 'troubleshoot', 'default apps') or ms-settings: URI",
                  {"page": "string"}, "safe"),
-    "read_page": (_on_page(lambda p: ui.read_page()), "List the toggles, dropdowns and buttons on a Settings page with their current values",
-                  {"page": "string (optional)"}, "safe"),
-    "get_toggle": (_on_page(lambda p: ui.get_toggle(p.get("name"))), "Read a named toggle on a Settings page",
-                   {"page": "string (optional)", "name": "string"}, "safe"),
-    "set_toggle": (_on_page(lambda p: ui.set_toggle(p.get("name"), _on(p))), "Turn a named toggle on a Settings page on or off (e.g. page 'night light', name 'night light')",
-                   {"page": "string (optional)", "name": "string", "state": "on|off"}, "safe"),
-    "select_option": (_on_page(lambda p: ui.select(p.get("name"), p.get("value", ""))), "Choose a value in a named dropdown on a Settings page",
-                      {"page": "string (optional)", "name": "string", "value": "string"}, "safe"),
-    "click": (_on_page(lambda p: ui.click(p.get("name"), p.get("confirm") is True)),
-              "Press a named button / link on a Settings page. Irreversible buttons (reset, remove, uninstall...) need confirm=true after asking the user",
-              {"page": "string (optional)", "name": "string", "confirm": "bool"}, "confirm"),
+    "read_page": (_on_page(lambda p: ui.read_page(p.get("window"))),
+                  "List the controls (toggles, checkboxes, dropdowns, edit boxes, sliders, tabs, buttons) with current values on a Settings page, or in a classic Control Panel window / dialog when window is given (tabs show which is selected)",
+                  {"page": "string (optional)", "window": "title of a Control Panel window (optional)"}, "safe"),
+    "get_toggle": (_on_page(lambda p: ui.get_toggle(p.get("name"), p.get("window"))), "Read a named toggle or checkbox on a Settings page or in a Control Panel window",
+                   {"page": "string (optional)", "window": "title of a Control Panel window (optional)", "name": "string"}, "safe"),
+    "set_toggle": (_on_page(lambda p: ui.set_toggle(p.get("name"), _on(p), p.get("window"))),
+                   "Turn a named toggle or checkbox on or off (e.g. page 'night light', name 'night light') and read it back. In a Control Panel window the change only takes effect after click Apply / OK",
+                   {"page": "string (optional)", "window": "title of a Control Panel window (optional)", "name": "string", "state": "on|off"}, "safe"),
+    "select_option": (_on_page(lambda p: ui.select(p.get("name"), p.get("value", ""), p.get("window"))),
+                      "Choose a value in a named dropdown on a Settings page or in a Control Panel window. In a Control Panel window the change only takes effect after click Apply / OK / Save changes",
+                      {"page": "string (optional)", "window": "title of a Control Panel window (optional)", "name": "string", "value": "string"}, "safe"),
+    "set_value": (_on_page(lambda p: ui.set_value(p.get("name"), p.get("value", ""), p.get("window"))),
+                  "Type a value into a named edit box, spinner or slider and read it back. In a Control Panel window the change only takes effect after click Apply / OK / Save changes",
+                  {"page": "string (optional)", "window": "title of a Control Panel window (optional)", "name": "string", "value": "string or number"}, "safe"),
+    "click": (_on_page(lambda p: ui.click(p.get("name"), p.get("confirm") is True, p.get("window"))),
+              "Press a named button, link, tab or radio button on a Settings page or in a Control Panel window; this is also how to commit: name 'Apply', 'OK' or 'Save changes'. Irreversible buttons (reset, remove, uninstall...) need confirm=true after asking the user",
+              {"page": "string (optional)", "window": "title of a Control Panel window (optional)", "name": "string", "confirm": "bool"}, "confirm"),
 }
 
 
@@ -133,6 +151,8 @@ class SettingsAgent(BaseAgent):
         return ("\nAgent `settings` controls and troubleshoots Windows 11 settings.\n"
                 "Prefer the dedicated actions (set_bluetooth, set_wifi, set_volume, ...): they call Windows directly and verify the result.\n"
                 "For any other setting use read_page to see the controls on a page, then set_toggle / select_option / click.\n"
+                "For classic Control Panel: list_control_panel_tasks, open_control_panel_task, then pass the returned `window` title to read_page, set_toggle, select_option, set_value and click "
+                "(omit window if it says Settings). Changes apply only when you click Apply / OK / Save changes yourself; afterwards read_page / get_toggle to confirm.\n"
                 "A failed action reports the real reason in `details`; never tell the user it worked.\n"
                 + "\n".join(lines) + f"\nPages for navigate / page: {', '.join(ui.PAGES)}.\n")
 

@@ -2,6 +2,7 @@
 import ctypes as ct
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
+import os
 import platform
 import re
 import shutil
@@ -17,14 +18,14 @@ from .display_modes import Guid
 U32, PTR = ct.c_uint32, ct.c_void_p
 
 
-def _cmd(args, timeout=20):
+def _cmd(args, timeout=20, env=None):
     done = subprocess.run(args, capture_output=True, text=True, timeout=timeout, errors='replace',
-                          creationflags=subprocess.CREATE_NO_WINDOW)
+                          creationflags=subprocess.CREATE_NO_WINDOW, env={**os.environ, **env} if env else None)
     return done.returncode, (done.stdout + done.stderr).strip()
 
 
-def _powershell(script, timeout=20):
-    return _cmd(['powershell', '-NoProfile', '-NonInteractive', '-Command', script], timeout)
+def _powershell(script, timeout=20, env=None):
+    return _cmd(['powershell', '-NoProfile', '-NonInteractive', '-Command', script], timeout, env)
 
 
 def _level(value):
@@ -278,6 +279,41 @@ def set_power_plan(name):
     if code:
         raise ActionError(f'powercfg refused the change: {out}')
     return list_power_plans()
+
+
+_TIMEOUTS = {'display': ('SUB_VIDEO', 'VIDEOIDLE', 'monitor-timeout'), 'sleep': ('SUB_SLEEP', 'STANDBYIDLE', 'standby-timeout')}
+
+
+def get_power_timeouts():
+    """Minutes before the display turns off / the PC sleeps, plugged in and on battery; 0 means never."""
+    found = {}
+    for what, (sub, setting, _) in _TIMEOUTS.items():
+        _, out = _cmd(['powercfg', '/query', 'SCHEME_CURRENT', sub, setting])
+        # The last two 0x values are the current AC and DC indexes (seconds), after the possible-settings block.
+        values = re.findall(r'0x([0-9a-fA-F]{8})\b', out)
+        if len(values) < 2:
+            raise ActionError(f'powercfg did not report the {what} timeout (this plan may not have it).')
+        found[what] = [int(value, 16) // 60 for value in values[-2:]]
+    return {'display_plugged_in': found['display'][0], 'display_battery': found['display'][1],
+            'sleep_plugged_in': found['sleep'][0], 'sleep_battery': found['sleep'][1]}
+
+
+def set_power_timeout(what, power, minutes):
+    if what not in _TIMEOUTS or power not in ('plugged_in', 'battery'):
+        raise ActionError("what must be 'display' or 'sleep' and power must be 'plugged_in' or 'battery'.")
+    try:
+        minutes = int(minutes)
+    except (TypeError, ValueError):
+        minutes = -1
+    if not 0 <= minutes <= 600:
+        raise ActionError('minutes must be a number from 0 to 600 (0 = never).')
+    code, out = _cmd(['powercfg', '/change', f"{_TIMEOUTS[what][2]}-{'ac' if power == 'plugged_in' else 'dc'}", str(minutes)])
+    if code:
+        raise ActionError(f'powercfg refused the change: {out}')
+    now = get_power_timeouts()
+    if now[f'{what}_{power}'] != minutes:
+        raise ActionError(f"The {what} timeout did not change to {minutes} minutes (it is {now[f'{what}_{power}']}); a policy may control it.")
+    return now
 
 
 # ── Network ─────────────────────────────────────────────────────────────────
