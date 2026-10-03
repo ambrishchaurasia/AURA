@@ -1,0 +1,249 @@
+{
+  "agenda": true,
+  "heading": "Academic Timetable",
+  "period": "13/09/2026 - 19/09/2026",
+  "row_count": 16,
+  "rows": [
+    {
+      "cohorts": [
+        "Fixture cohort 1"
+      ],
+      "course": "Fixture course 1",
+      "date_label": "Monday, 14 September 2026, 11:00 am–11:55, 11:00 - 11:55",
+      "extra_cohorts": "",
+      "meeting_link": "https://example.org/class/1",
+      "raw_text": "Redacted fixture event 1",
+      "room": "Fixture room",
+      "teachers": [
+        "Fixture teacher 1"
+      ],
+      "time": "11:00-11:55"
+    },
+    {
+      "cohorts": [
+        "Fixture cohort 1"
+      ],
+      "course": "Fixture course 2",
+      "date_label": "Tuesday, 15 September 2026, 8:00 am–09:55, 08:00 - 09:55",
+      "extra_cohorts": "1+",
+      "meeting_link": null,
+      "raw_text": "Redacted fixture event 2",
+      "room": "Fixture room",
+      "teachers": [
+        "Fixture teacher 1"
+      ],
+      "time": "08:00-09:55"
+    },
+    {
+      "cohorts": [
+        "Fixture cohort 1"
+      ],
+      "course": "Fixture course 3",
+      "date_label": "Tuesday, 15 September 2026, 11:00 am–11:55, 11:00 - 11:55",
+      "extra_cohorts": "",
+      "meeting_link": "https://example.org/class/3",
+      "raw_text": "Redacted fixture event 3",
+      "room": "Fixture room",
+      "teachers": [
+        "Fixture teacher 1"
+      ],
+      "time": "11:00-11:55"
+    },
+    {
+      "cohorts": [
+        "Fixture cohort 1"
+      ],
+      "course": "Fixture course 4",
+      "date_label": "Wednesday, 16 September 2026, 9:00 am–09:55, 09:00 - 09:55",
+      "extra_cohorts": "3+",
+      "meeting_link": null,
+      "raw_text": "Redacted fixture event 4",
+      "room": "Fixture room",
+      "teachers": [
+        "Fixture teacher 1"
+      ],
+      "time": "09:00-09:55"
+    },
+    {
+      "cohorts": [
+        "Fixture cohort 1"
+      ],
+      "course": "Fixture course 5",
+      "date_label": "Wednesday, 16 September 2026, 11:00 am–11:55, 11:00 - 11:55",
+      "extra_cohorts": "",
+      "meeting_link": "https://example.org/class/5",
+      "raw_text": "Redacted fixture event 5",
+      "room": "Fixture room",
+      "teachers": [
+        "Fixture teacher 1"
+      ],
+      "time": "11:00-11:55"
+    },
+    {
+      "cohorts": [
+        "Fixture cohort 1"
+      ],
+      "course": "Fixture course 6",
+      "date_label": "Wednesday, 16 September 2026, 1:00 pm–13:55, 13:00 - 13:55",
+      "extra_cohorts": "2+",
+      "meeting_link": null,
+      "raw_text": "Redacted fixture event 6",
+      "room": "Fixture room",
+      "teachers": [
+        "Fixture teacher 1"
+      ],
+      "time": "13:00-13:55"
+    },
+    {
+      "cohorts": [
+        "Fixture cohort 1"
+      ],
+      "course": "Fixture course 7",
+      "date_label": "Thursday, 17 September 2026, 8:00 am–09:55, 08:00 - 09:55",
+      "extra_cohorts": "1+",
+      "meeting_link": null,
+      "raw_text": "Redacted fixture event 7",
+      "room": "Fixture room",
+      "teachers": [
+        "Fixture teacher 1"
+      ],
+      "time": "08:00-09:55"
+    },
+    {
+      "cohorts": [
+        "Fixture cohort 1"
+      ],
+      "course": "Fixture course 8",
+      "date_label": "Thursday, 17 September 2026, 11:00 am–11:55, 11:00 - 11:55",
+      "extra_cohorts": "",
+      "meeting_link": "https://example.org/class/8",
+      "raw_text": "Redacted fixture event 8",
+      "room": "Fixture room",
+      "teachers": [
+        "Fixture teacher 1"
+      ],
+      "time": "11:00-11:55"
+    },
+    {
+      "cohorts": [
+        "Fixture cohort 1"
+      ],
+      "course": "Fixture course 9",
+      "date_label": "Thursday, 17 September 2026, 12:00 pm–12:55, 12:00 - 12:55",
+      "extra_cohorts": "2+",
+      "meeting_link": null,
+      "raw_text": "Redacted fixture event 9",
+      "room": "Fixture room",
+      "teachers": [
+        "Fixture teacher 1"
+      ],
+      "time": "12:00-12:55"
+    },
+    {
+      "cohorts": [
+        "Fixture cohort 1"
+      ],
+      "course": "Fixture course 10",
+      "date_label": "Friday, 18 September 2026, 8:00 am–08:55, 08:00 - 08:55",
+      "extra_cohorts": "3+",
+      "meeting_link": null,
+      "raw_text": "Redacted fixture event 10",
+      "room": "Fixture room",
+      "teachers": [
+        "Fixture teacher 1"
+      ],
+      "time": "08:00-08:55"
+    },
+    {
+      "cohorts": [
+        "Fixture cohort 1"
+      ],
+      "course": "Fixture course 11",
+      "date_label": "Friday, 18 September 2026, 9:00 am–09:55, 09:00 - 09:55",
+      "extra_cohorts": "2+",
+      "meeting_link": null,
+      "raw_text": "Redacted fixture event 11",
+      "room": "Fixture room",
+      "teachers": [
+        "Fixture teacher 1"
+      ],
+      "time": "09:00-09:55"
+    },
+    {
+      "cohorts": [
+        "Fixture cohort 1"
+      ],
+      "course": "Fixture course 12",
+      "date_label": "Friday, 18 September 2026, 11:00 am–11:55, 11:00 - 11:55",
+      "extra_cohorts": "",
+      "meeting_link": "https://example.org/class/12",
+      "raw_text": "Redacted fixture event 12",
+      "room": "Fixture room",
+      "teachers": [
+        "Fixture teacher 1"
+      ],
+      "time": "11:00-11:55"
+    },
+    {
+      "cohorts": [
+        "Fixture cohort 1"
+      ],
+      "course": "Fixture course 13",
+      "date_label": "Saturday, 19 September 2026, 11:00 am–11:55, 11:00 - 11:55",
+      "extra_cohorts": "",
+      "meeting_link": "https://example.org/class/13",
+      "raw_text": "Redacted fixture event 13",
+      "room": "Fixture room",
+      "teachers": [
+        "Fixture teacher 1"
+      ],
+      "time": "11:00-11:55"
+    },
+    {
+      "cohorts": [
+        "Fixture cohort 1"
+      ],
+      "course": "Fixture course 14",
+      "date_label": "Saturday, 19 September 2026, 11:00 am–11:55, 11:00 - 11:55",
+      "extra_cohorts": "2+",
+      "meeting_link": null,
+      "raw_text": "Redacted fixture event 14",
+      "room": "Fixture room",
+      "teachers": [
+        "Fixture teacher 1"
+      ],
+      "time": "11:00-11:55"
+    },
+    {
+      "cohorts": [
+        "Fixture cohort 1"
+      ],
+      "course": "Fixture course 15",
+      "date_label": "Saturday, 19 September 2026, 12:00 pm–12:55, 12:00 - 12:55",
+      "extra_cohorts": "3+",
+      "meeting_link": null,
+      "raw_text": "Redacted fixture event 15",
+      "room": "Fixture room",
+      "teachers": [
+        "Fixture teacher 1"
+      ],
+      "time": "12:00-12:55"
+    },
+    {
+      "cohorts": [
+        "Fixture cohort 1"
+      ],
+      "course": "Fixture course 16",
+      "date_label": "Saturday, 19 September 2026, 1:00 pm–13:55, 13:00 - 13:55",
+      "extra_cohorts": "2+",
+      "meeting_link": null,
+      "raw_text": "Redacted fixture event 16",
+      "room": "Fixture room",
+      "teachers": [
+        "Fixture teacher 1"
+      ],
+      "time": "13:00-13:55"
+    }
+  ],
+  "fixture_provenance": "Live Agenda DOM shape captured 2026-09-13. Course, room, teacher, cohort, meeting-link and raw-text values replaced before saving. Dates/times and row structure retained."
+}

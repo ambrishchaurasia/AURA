@@ -44,3 +44,6 @@ dist-ssr/
 
 # AURA specific
 *.log
+
+automation/myupes_session.json
+automation/upes_categories.json
