@@ -1,107 +1,161 @@
 import os
 import json
-from groq import Groq
+from google import genai
+from google.genai import types
 from dotenv import load_dotenv
 
 load_dotenv()
 
 from automation.core.registry import registry
 
-GROQ_MODEL = "openai/gpt-oss-120b"
+import os
+import json
+from google import genai
+from google.genai import types
+from dotenv import load_dotenv
 
+load_dotenv()
+
+from automation.core.registry import registry
 
 class LLMOrchestrator:
     def __init__(self):
-        api_key = os.environ.get("GROQ_API_KEY")
+        # We need the API key to use Google Gemini
+        api_key = os.environ.get("GEMINI_API_KEY")
         if not api_key:
-            raise ValueError("GROQ_API_KEY is not set in the environment or .env file.")
-
-        self.client = Groq(api_key=api_key)
-
+            raise ValueError("GEMINI_API_KEY is not set in the environment or .env file.")
+        
+        self.client = genai.Client(api_key=api_key)
+        
         # Build dynamic capabilities string from the registry
         capabilities = ""
         for name, agent in registry.get_all_agents().items():
             capabilities += agent.get_llm_capabilities() + "\n"
 
-        self.system_instruction = """
+        # System instructions to enforce the JSON structure for the agents
+        self.system_instruction = f"""
 You are the Orchestrator for AURA (Agentic UI Routing Assistant).
-Your job is to translate the user's natural language request into a sequence of JSON actions for desktop automation agents.
+Your job is to translate the user's natural language request into an ordered sequence of JSON actions for desktop automation agents (Notepad and File Explorer).
 
 Available Agents and their capabilities:
-""" + capabilities + """
+{capabilities}
+
+CHRONOLOGICAL STEP FLOW & CONTEXT RULES:
+1. Maintain chronological step ordering strictly as specified or implied by the user's prompt (e.g., clauses connected by "then", "and then", "after that", "next").
+2. Context Resolution & File Naming:
+   - Resolve pronouns ("it", "the file", "that document") using previously mentioned filenames.
+   - If user says "text document named hello" or "file called notes", resolve the filename to include `.txt` (e.g., `"hello.txt"`, `"notes.txt"`).
+   - If user asks to save to a specific directory (e.g. "save as hello.txt in downloads"), pass `"path": "Downloads"` in `save_as`.
+   - If user says "go to downloads and open hello.txt", emit `explorer` -> `navigate` `{{"path": "Downloads"}}` then `explorer` -> `open_item` `{{"filename": "hello.txt"}}`.
+3. Save vs Save As Rules:
+   - If user is creating/saving a new file for the first time, or explicitly requests "save as <filename>", emit `notepad` -> `save_as`.
+   - If user opens an ALREADY SAVED file and edits it (e.g. "open hello.txt, edit it and save it"), emit `notepad` -> `save` `{{"params": {{}}}}` (Ctrl+S save), NOT `save_as`!
+4. Standard Action Parameters:
+   - `notepad` agent:
+     - `open`: `{{"filepath": "<optional_path_or_filename>"}}`
+     - `type`: `{{"text": "<string>"}}`
+     - `save_as`: `{{"filename": "<filename>", "path": "<optional_folder>"}}`
+     - `save`: `{{}}`
+     - `close`: `{{}}`
+   - `explorer` agent:
+     - `open`: `{{"path": "<optional_folder>"}}`
+     - `navigate`: `{{"path": "<folder_name_or_path>"}}`
+     - `open_item`: `{{"filename": "<filename_or_path>"}}`
+     - `create_folder`: `{{"folder_name": "<name>", "path": "<optional_path>"}}`
+     - `create_file`: `{{"file_name": "<name>", "content": "<optional_content>", "path": "<optional_path>"}}`
+
+EXAMPLE 1:
+User: "open notepad write hello world and save text document named hello in documents"
+Response JSON:
+{{
+  "message": "Opening Notepad, typing text, and saving text document as hello.txt in Documents.",
+  "actions": [
+    {{ "agent": "notepad", "action": "open", "params": {{}} }},
+    {{ "agent": "notepad", "action": "type", "params": {{ "text": "hello world" }} }},
+    {{ "agent": "notepad", "action": "save_as", "params": {{ "filename": "hello.txt", "path": "Documents" }} }}
+  ]
+}}
+
+EXAMPLE 2:
+User: "open file explorer go to downloads and open hello.txt and edit it and save it"
+Response JSON:
+{{
+  "message": "Navigating to Downloads, opening hello.txt, editing it, and saving changes.",
+  "actions": [
+    {{ "agent": "explorer", "action": "navigate", "params": {{ "path": "Downloads" }} }},
+    {{ "agent": "explorer", "action": "open_item", "params": {{ "filename": "hello.txt" }} }},
+    {{ "agent": "notepad", "action": "type", "params": {{ "text": "\\nUpdated content." }} }},
+    {{ "agent": "notepad", "action": "save", "params": {{}} }}
+  ]
+}}
+
 You MUST respond with a RAW JSON object containing an optional message and the steps to execute.
 Do not use markdown blocks like ```json. Return ONLY the raw JSON string.
 
 Format:
-{
-  "message": "<A conversational response to the user, if needed>",
+{{
+  "message": "<Conversational summary>",
   "actions": [
-    {
+    {{
       "agent": "<agent_name>",
       "action": "<action_name>",
-      "params": { ... }
-    }
+      "params": {{ ... }}
+    }}
   ]
-}
+}}
 """
 
     def plan(self, prompt: str) -> dict:
         """
-        Sends the user prompt to Groq and parses the resulting JSON.
-        Retries automatically on rate limit errors.
+        Sends the user prompt to Gemini and parses the resulting JSON.
+        Returns a dictionary with 'message' and 'actions'.
         """
-        max_retries = 4
-        for attempt in range(max_retries):
+        models_to_try = [
+            "gemini-2.5-flash",
+            "gemini-3.5-flash",
+            "gemini-flash-latest",
+            "gemini-2.5-pro",
+            "gemini-3.6-flash",
+        ]
+        last_error = None
+
+        for model_name in models_to_try:
             try:
-                response = self.client.chat.completions.create(
-                    model=GROQ_MODEL,
-                    messages=[
-                        {"role": "system", "content": self.system_instruction},
-                        {"role": "user",   "content": prompt},
-                    ],
-                    temperature=0.0,
+                response = self.client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        system_instruction=self.system_instruction,
+                        temperature=0.0
+                    )
                 )
-                text = response.choices[0].message.content.strip()
-                break  # Success
+                
+                # Extract text from response
+                text = response.text.strip()
+                
+                # Clean up markdown code blocks if the model accidentally includes them
+                if text.startswith("```json"):
+                    text = text[7:]
+                if text.startswith("```"):
+                    text = text[3:]
+                if text.endswith("```"):
+                    text = text[:-3]
+                
+                text = text.strip()
+                
+                response_data = json.loads(text)
+                if isinstance(response_data, dict) and "actions" in response_data:
+                    return response_data
+                    
             except Exception as e:
-                err_str = str(e)
-                if ("429" in err_str or "503" in err_str or "rate_limit" in err_str.lower()) and attempt < max_retries - 1:
-                    import time
-                    wait_secs = 2 ** attempt
-                    print(f"[LLMOrchestrator] Groq busy (attempt {attempt+1}/{max_retries}). Retrying in {wait_secs}s...")
-                    time.sleep(wait_secs)
-                else:
-                    print(f"[LLMOrchestrator] Groq Error: {e}")
-                    return {"message": f"API Error: {e}", "actions": []}
-        else:
-            return {"message": "Groq API unavailable after retries.", "actions": []}
+                last_error = e
+                continue
 
-        try:
-            # Strip any accidental markdown fences
-            if text.startswith("```json"):
-                text = text[7:]
-            if text.startswith("```"):
-                text = text[3:]
-            if text.endswith("```"):
-                text = text[:-3]
-            text = text.strip()
-
-            response_data = json.loads(text)
-            if not isinstance(response_data, dict):
-                print(f"[LLMOrchestrator] Error: LLM returned non-dict JSON: {response_data}")
-                return {"message": "Invalid response format from LLM.", "actions": []}
-            return response_data
-
-        except json.JSONDecodeError as e:
-            print(f"[LLMOrchestrator] JSON Parse Error: {e}")
-            print(f"[LLMOrchestrator] Raw Response: {text}")
-            return {"message": "Failed to parse LLM response.", "actions": []}
-        except Exception as e:
-            print(f"[LLMOrchestrator] Error: {e}")
-            return {"message": f"Error: {e}", "actions": []}
-
+        print(f"[LLMOrchestrator] All Gemini models failed. Last error: {last_error}")
+        return {"message": "Could not parse plan via Gemini LLM.", "actions": []}
 
 if __name__ == "__main__":
     orchestrator = LLMOrchestrator()
-    plan = orchestrator.plan("Open Notepad, type Hello Ambrish, and save as my_test.txt")
+    plan = orchestrator.plan("save as hello.txt and then open file explorer and open it and open file explorer go to downloads and open hello.txt and edit it")
     print(json.dumps(plan, indent=2))
+

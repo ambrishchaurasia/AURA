@@ -2,14 +2,14 @@
 # Each agent implements the BaseAgent contract for a specific application.
 
 from automation.agents.notepad_agent import NotepadAgent
-from automation.agents.settings_agent import SettingsAgent
-from automation.agents.browser_agent import BrowserAgent
+from automation.agents.explorer_agent import ExplorerAgent
 
 # Agent registry — maps application name to agent class
 AGENT_REGISTRY = {
     "notepad": NotepadAgent,
-    "settings": SettingsAgent,
-    "browser": BrowserAgent,
+    "explorer": ExplorerAgent,
+    "file_explorer": ExplorerAgent,
+    "fileexplorer": ExplorerAgent,
 }
 
 

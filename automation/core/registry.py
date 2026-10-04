@@ -26,11 +26,9 @@ class AgentRegistry:
                             agent_instance = obj()
                             agent_name = agent_instance.get_agent_name()
                             self._agents[agent_name] = agent_instance
-                            import sys
-                            print(f"[Registry] Loaded agent: {agent_name} from {filename}", file=sys.stderr)
+                            print(f"[Registry] Loaded agent: {agent_name} from {filename}")
                 except Exception as e:
-                    import sys
-                    print(f"[Registry] Failed to load agent from {filename}: {e}", file=sys.stderr)
+                    print(f"[Registry] Failed to load agent from {filename}: {e}")
 
     def get_agent(self, agent_name: str) -> BaseAgent | None:
         """Retrieve an initialized agent instance by its name."""

@@ -1,6 +1,6 @@
 {
   "application": "notepad",
-  "version": "1.0",
+  "version": "2.0",
   "elements": {
     "text_editor": {
       "identifiers": {
@@ -9,6 +9,9 @@
         "class_name": "RichEditD2DPT"
       },
       "alternatives": [
+        {
+          "control_type": "Document"
+        },
         {
           "control_type": "Edit"
         }
@@ -51,25 +54,95 @@
         "click"
       ]
     },
-    "save_dialog": {
+    "new_tab_button": {
+      "identifiers": {
+        "name": "Add new tab",
+        "control_type": "Button"
+      },
+      "alternatives": [
+        {
+          "automation_id": "AddTabButton",
+          "control_type": "Button"
+        },
+        {
+          "name": "New tab",
+          "control_type": "Button"
+        }
+      ],
+      "actions": [
+        "click"
+      ]
+    },
+    "save_as_dialog": {
       "identifiers": {
         "name": "Save As",
         "control_type": "Window"
       },
+      "alternatives": [
+        {
+          "name": "Save as",
+          "control_type": "Window"
+        }
+      ],
       "actions": []
     },
-    "filename_input": {
+    "save_as_filename_input": {
       "identifiers": {
-        "automation_id": "FileNameControlHost"
+        "automation_id": "FileNameControlHost",
+        "control_type": "ComboBox"
       },
       "alternatives": [
         {
-          "name": "File name",
+          "name": "File name:",
+          "control_type": "ComboBox"
+        },
+        {
+          "name": "File name:",
+          "control_type": "Edit"
+        },
+        {
+          "automation_id": "1001",
           "control_type": "Edit"
         }
       ],
       "actions": [
         "type"
+      ]
+    },
+    "save_as_address_bar": {
+      "identifiers": {
+        "name": "Address",
+        "control_type": "ToolBar"
+      },
+      "alternatives": [
+        {
+          "name": "Address band toolbar",
+          "control_type": "ToolBar"
+        },
+        {
+          "automation_id": "1001",
+          "control_type": "ToolBar"
+        }
+      ],
+      "actions": [
+        "type",
+        "click"
+      ]
+    },
+    "save_as_save_button": {
+      "identifiers": {
+        "name": "Save",
+        "control_type": "Button",
+        "automation_id": "1"
+      },
+      "alternatives": [
+        {
+          "name": "Save",
+          "control_type": "Button"
+        }
+      ],
+      "actions": [
+        "click"
       ]
     },
     "save_button": {
@@ -81,9 +154,41 @@
         "click"
       ]
     },
-    "dont_save_button": {
+    "close_dont_save_button": {
       "identifiers": {
-        "name": "Don't Save",
+        "name": "Don\u2019t Save",
+        "control_type": "Button"
+      },
+      "alternatives": [
+        {
+          "name": "Don't Save",
+          "control_type": "Button"
+        },
+        {
+          "name": "Dont Save",
+          "control_type": "Button"
+        },
+        {
+          "name": "No",
+          "control_type": "Button"
+        }
+      ],
+      "actions": [
+        "click"
+      ]
+    },
+    "close_save_button": {
+      "identifiers": {
+        "name": "Save",
+        "control_type": "Button"
+      },
+      "actions": [
+        "click"
+      ]
+    },
+    "close_cancel_button": {
+      "identifiers": {
+        "name": "Cancel",
         "control_type": "Button"
       },
       "actions": [

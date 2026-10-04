@@ -1,0 +1,62 @@
+{
+  "application": "explorer",
+  "version": "1.0",
+  "elements": {
+    "address_bar": {
+      "identifiers": {
+        "name": "Address",
+        "control_type": "Edit",
+        "class_name": "Address Band Root"
+      },
+      "alternatives": [
+        {
+          "name": "Address Bar",
+          "control_type": "Edit"
+        }
+      ],
+      "actions": [
+        "type",
+        "click"
+      ]
+    },
+    "search_box": {
+      "identifiers": {
+        "name": "Search Box",
+        "control_type": "Edit"
+      },
+      "alternatives": [
+        {
+          "automation_id": "SearchEditBox"
+        }
+      ],
+      "actions": [
+        "type",
+        "click"
+      ]
+    },
+    "file_list": {
+      "identifiers": {
+        "control_type": "List",
+        "class_name": "UIItemsView"
+      },
+      "alternatives": [
+        {
+          "control_type": "Table"
+        }
+      ],
+      "actions": [
+        "click",
+        "select"
+      ]
+    },
+    "new_folder_button": {
+      "identifiers": {
+        "name": "New folder",
+        "control_type": "Button"
+      },
+      "actions": [
+        "click"
+      ]
+    }
+  }
+}

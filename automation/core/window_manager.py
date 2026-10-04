@@ -25,50 +25,37 @@ def find_window(
     for UWP/packaged apps like Win11 Notepad.
     """
     desktop = Desktop(backend="uia")
-    
-    # Fast path: use pywinauto's built-in filtering which is much faster
-    # than fetching all windows and filtering in Python
-    try:
-        if title_contains:
-            # Special case for notepad to avoid matching VS Code tabs
-            if title_contains.lower() == "notepad":
-                windows = desktop.windows(title_re="(?i).*notepad.*")
-                for window in windows:
-                    info = window.element_info
-                    wt = (info.name or "").strip().lower()
-                    cls = (info.class_name or "").strip().lower()
-                    if class_name and class_name.lower() != cls:
-                        continue
-                    
+    for window in desktop.windows():
+        try:
+            info = window.element_info
+            wt = (info.name or "").strip()
+            wt_lower = wt.lower()
+            cls = (info.class_name or "").strip()
+
+            if class_name:
+                if class_name.lower() != cls.lower():
+                    continue
+
+            if title_contains:
+                tc_lower = title_contains.lower()
+                # Safeguard: if looking for Notepad, do not match editor tabs like "notepad.json - VS Code"
+                if tc_lower == "notepad":
                     is_real_notepad = (
-                        wt == "notepad"
-                        or wt.endswith("- notepad")
-                        or wt.endswith("– notepad")
-                        or wt.endswith("— notepad")
-                        or cls == "notepad"
+                        wt_lower == "notepad"
+                        or wt_lower.endswith("- notepad")
+                        or wt_lower.endswith("– notepad")
+                        or wt_lower.endswith("— notepad")
+                        or cls.lower() == "notepad"
                     )
-                    if is_real_notepad:
-                        return desktop.window(handle=info.handle)
-            else:
-                windows = desktop.windows(title_re=f"(?i).*{title_contains}.*")
-                for window in windows:
-                    info = window.element_info
-                    cls = (info.class_name or "").strip().lower()
-                    if class_name and class_name.lower() != cls:
+                    if not is_real_notepad:
                         continue
-                    return desktop.window(handle=info.handle)
-                    
-        elif class_name:
-            windows = desktop.windows(class_name=class_name)
-            if windows:
-                return desktop.window(handle=windows[0].element_info.handle)
-                
-        else:
-            # Fallback to scanning everything (slow)
-            for window in desktop.windows():
-                return desktop.window(handle=window.element_info.handle)
-    except Exception:
-        pass
+                elif tc_lower not in wt_lower:
+                    continue
+
+            # Return wrapped window using exact handle
+            return desktop.window(handle=info.handle)
+        except Exception:
+            continue
 
     return None
 
@@ -121,23 +108,14 @@ def launch_application(
         except Exception:
             pass
     except Exception as e:
-        import sys
-        print(f"[WindowManager] Application.start failed: {e}", file=sys.stderr)
+        print(f"[WindowManager] Application.start failed: {e}")
 
     # Strategy 2: Fall back to subprocess + connect by title
     try:
-        import subprocess
-        subprocess.Popen(
-            executable, 
-            creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
-        )
+        subprocess.Popen(executable)
         time.sleep(1.5)
     except Exception as e:
-        import sys
-        print(f"[WindowManager] subprocess failed: {e}", file=sys.stderr)
+        print(f"[WindowManager] subprocess failed: {e}")
         return None
 
     # Wait for window to appear via connect
@@ -160,38 +138,70 @@ def launch_application(
     if window is not None:
         return window
 
-    import sys
-    print(f"[WindowManager] Timeout waiting for window: {wait_title}", file=sys.stderr)
+    print(f"[WindowManager] Timeout waiting for window: {wait_title}")
     return None
 
 
 def focus_window(window) -> bool:
     """
-    Bring a window to the foreground and set focus.
+    Bring a window to the foreground and set focus cleanly.
 
     Args:
-        window: pywinauto window wrapper
+        window: pywinauto window wrapper or handle integer
     """
-    try:
-        wrapper = window
-        # Get the actual wrapper if needed
-        if hasattr(window, 'wrapper_object'):
+    if window is None:
+        return False
+
+    handle = None
+    if isinstance(window, int):
+        handle = window
+    else:
+        try:
+            if hasattr(window, 'element_info') and hasattr(window.element_info, 'handle'):
+                handle = window.element_info.handle
+        except Exception:
+            pass
+
+        if not handle and hasattr(window, 'handle'):
             try:
-                wrapper = window.wrapper_object()
+                h = window.handle
+                handle = h() if callable(h) else h
             except Exception:
                 pass
 
-        if hasattr(wrapper, 'is_minimized') and wrapper.is_minimized():
-            wrapper.restore()
-            time.sleep(0.2)
+        if not handle:
+            try:
+                if hasattr(window, 'wrapper_object'):
+                    handle = window.wrapper_object().handle
+            except Exception:
+                pass
 
-        wrapper.set_focus()
-        time.sleep(0.2)
-        return True
-    except Exception as e:
-        import sys
-        print(f"[WindowManager] Failed to focus window: {e}", file=sys.stderr)
-        return False
+    if handle:
+        import win32gui, win32con, win32process
+        try:
+            fore_hwnd = win32gui.GetForegroundWindow()
+            if fore_hwnd == handle:
+                return True
+            fore_thread, _ = win32process.GetWindowThreadProcessId(fore_hwnd) if fore_hwnd else (0, 0)
+            target_thread, _ = win32process.GetWindowThreadProcessId(handle)
+            if fore_thread and target_thread and fore_thread != target_thread:
+                try:
+                    win32process.AttachThreadInput(fore_thread, target_thread, True)
+                    win32gui.ShowWindow(handle, win32con.SW_SHOW)
+                    win32gui.SetForegroundWindow(handle)
+                    win32process.AttachThreadInput(fore_thread, target_thread, False)
+                except Exception:
+                    win32gui.ShowWindow(handle, win32con.SW_SHOW)
+                    win32gui.SetForegroundWindow(handle)
+            else:
+                win32gui.ShowWindow(handle, win32con.SW_SHOW)
+                win32gui.SetForegroundWindow(handle)
+            return True
+        except Exception:
+            pass
+
+    return False
+
 
 
 def close_window(window) -> bool:
@@ -205,8 +215,7 @@ def close_window(window) -> bool:
         window.close()
         return True
     except Exception as e:
-        import sys
-        print(f"[WindowManager] Failed to close window: {e}", file=sys.stderr)
+        print(f"[WindowManager] Failed to close window: {e}")
         return False
 
 
