@@ -199,6 +199,35 @@ class _Reader:
             dropdown.select_option('agenda')
         else:
             self.page.get_by_role('button', name='Agenda', exact=True).click()
+            
+        # Fast-travel to the requested date using the Calendar popup to avoid slow AJAX loads for intermediate weeks
+        try:
+            self.page.locator('button.k-nav-current').click(timeout=3000)
+            self.page.wait_for_timeout(500)
+            
+            # Kendo calendar data-value uses 0-indexed months
+            target_value = f"{first.year}/{first.month - 1}/{first.day}"
+            target_locator = self.page.locator(f'.k-calendar td a[data-value="{target_value}"]')
+            
+            # Click prev/next month in the calendar popup until our target date is visible
+            for _ in range(24):
+                if target_locator.is_visible():
+                    target_locator.click()
+                    break
+                
+                # Check current calendar title to decide direction
+                title = self.page.locator('.k-calendar .k-nav-fast').inner_text().strip()
+                cal_date = datetime.strptime(title, '%B %Y').date() if title else date.today()
+                
+                if date(first.year, first.month, 1) < date(cal_date.year, cal_date.month, 1):
+                    self.page.locator('.k-calendar .k-nav-prev').click()
+                else:
+                    self.page.locator('.k-calendar .k-nav-next').click()
+                    
+                self.page.wait_for_timeout(200)
+        except Exception:
+            pass
+
         # Bounded navigation using the observed Previous/Next controls; never
         # guess a hidden endpoint or synthesize unobserved dates in the UI.
         moves = 0

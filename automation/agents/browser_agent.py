@@ -211,11 +211,27 @@ Agent `browser` supports:
                 # Confirmed HTML: <span class="k-input-inner">Select Department</span>
                 # Each dropdown shows its current value as text inside span.k-input-inner
                 print("[BrowserAgent] Filling form...")
-                if department:
+                if department and department != "Select Department":
+                    dep_lower = department.strip().lower()
+                    if dep_lower in ("it", "wifi", "internet", "network", "information technology"):
+                        department = "Information Technology"
+                        # Auto-fill missing downstream selections for common IT queries
+                        if not category or category == "Select Category":
+                            category = "Network"
+                        if not subcategory or subcategory == "Select Sub Category":
+                            subcategory = "Network (LAN and wifi)"
                     self._kendo_dropdown(page, "Select Department", department)
-                if category:
+                    
+                if category and category != "Select Category":
+                    cat_lower = category.strip().lower()
+                    if cat_lower in ("wifi", "internet"):
+                        category = "Network"
                     self._kendo_dropdown(page, "Select Category", category)
-                if subcategory:
+                    
+                if subcategory and subcategory != "Select Sub Category":
+                    sub_lower = subcategory.strip().lower()
+                    if sub_lower in ("wifi", "internet", "lan"):
+                        subcategory = "Network (LAN and wifi)"
                     self._kendo_dropdown(page, "Select Sub Category", subcategory)
 
                 # ── 5. Short Description ──────────────────────────────────────
