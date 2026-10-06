@@ -1,5 +1,5 @@
 @echo off
-set PYTHONPATH=E:\mycodes\AURA
+set PYTHONPATH=%~dp0
 set PYTHONUNBUFFERED=1
 set PYTHONIOENCODING=utf-8
-E:\mycodes\AURA\automation\venv\Scripts\python.exe -m automation.mcp %* 2> mcp_error.log
+"%~dp0automation\venv\Scripts\python.exe" mcp_server.py %* 2> mcp_error.log
