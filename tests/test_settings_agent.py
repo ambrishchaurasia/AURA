@@ -1,5 +1,6 @@
 """Offline checks for the settings agent: run with `python -m pytest tests` from the repo root."""
 import asyncio
+import contextlib
 import ctypes as ct
 import itertools
 import sys
@@ -89,6 +90,36 @@ def test_refresh_rate_refuses_unsupported_and_audio_name_must_be_unique(monkeypa
     monkeypatch.setattr(system, '_create', lambda clsid, iid: ct.c_void_p())
     ambiguous = SettingsAgent().execute('set_audio_device', {'name': 'speakers'})
     assert ambiguous['status'] == 'failure' and 'Speakers (B)' in ambiguous['details']
+
+
+def test_app_volume_changes_one_app_and_reads_back(monkeypatch):
+    class Session:
+        def __init__(self, name, stuck=False):
+            self.name, self.playing, self.level, self.muted, self.stuck = name, True, 100, False, stuck
+
+        def read(self):
+            return self.level, self.muted
+
+        def write(self, level, muted):
+            if not self.stuck:
+                self.level = self.level if level is None else level
+                self.muted = self.muted if muted is None else muted
+
+    sessions = [Session('chrome'), Session('chrome'), Session('Spotify'), Session('steam'), Session('steamwebhelper', stuck=True)]
+    monkeypatch.setattr(system, '_app_sessions', lambda: contextlib.nullcontext(sessions))
+    agent = SettingsAgent()
+    done = agent.execute('set_app_volume', {'app': 'Chrome', 'level': 30})
+    assert done['status'] == 'success' and done['data']['volume'] == 30
+    assert [session.level for session in sessions] == [30, 30, 100, 100, 100]  # both chrome sessions, nothing else
+    assert agent.execute('set_app_mute', {'app': 'spot', 'state': 'on'})['data']['muted'] is True
+    assert agent.execute('set_app_volume', {'app': 'steam', 'level': 5})['status'] == 'success' and sessions[3].level == 5  # exact name wins
+    assert [row['app'] for row in agent.execute('list_app_volumes')['data']['apps']] == ['chrome', 'Spotify', 'steam', 'steamwebhelper']
+    ambiguous = agent.execute('set_app_volume', {'app': 's', 'level': 1})
+    assert ambiguous['status'] == 'failure' and 'Spotify' in ambiguous['details']
+    stuck = agent.execute('set_app_volume', {'app': 'webhelper', 'level': 10})
+    assert stuck['status'] == 'failure' and 'did not apply' in stuck['details']
+    assert agent.execute('set_app_volume', {'app': 'chrome'})['status'] == 'failure'  # no level
+    assert agent.execute('set_app_volume', {'app': ' ', 'level': 10})['status'] == 'failure'
 
 
 FAKE_TASKS = [{'name': 'Choose a power plan', 'group': 'Power Options', 'path': 'P1'},
