@@ -75,6 +75,12 @@ ACTIONS = {
     "get_volume": (lambda p: system.get_volume(), "Read the volume and mute state", {}, "safe"),
     "set_volume": (lambda p: system.set_volume(level=p.get("level")), "Set the volume (0-100)", {"level": "int"}, "safe"),
     "set_mute": (lambda p: system.set_volume(muted=_on(p)), "Mute (on) or unmute (off) sound", {"state": "on|off"}, "safe"),
+    "list_app_volumes": (lambda p: system.list_app_volumes(), "Volume mixer: list apps that have played sound with their own volume and mute state", {}, "safe"),
+    "set_app_volume": (lambda p: system.set_app_volume(p.get("app"), level=p.get("level")),
+                       "Volume mixer: set one app's volume (0-100, relative to the master volume). app is part of a name from list_app_volumes",
+                       {"app": "string", "level": "int"}, "safe"),
+    "set_app_mute": (lambda p: system.set_app_volume(p.get("app"), muted=_on(p)), "Volume mixer: mute (on) or unmute (off) one app",
+                     {"app": "string", "state": "on|off"}, "safe"),
     "list_audio_devices": (lambda p: system.list_audio_devices(), "List active sound output devices and which is the default", {}, "safe"),
     "set_audio_device": (lambda p: system.set_audio_device(p.get("name")), "Make a sound output device the default (matched by part of its name)", {"name": "string"}, "safe"),
     # Display

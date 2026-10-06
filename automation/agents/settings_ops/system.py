@@ -202,6 +202,128 @@ def set_audio_device(name):
     return list_audio_devices(str(name or ''))
 
 
+# ── Per-app volume (Core Audio sessions, what the volume mixer shows) ───────
+
+def _process_name(pid):
+    kernel = ct.windll.kernel32
+    kernel.OpenProcess.restype = PTR
+    handle = kernel.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+    if not handle:
+        return f'pid {pid}'
+    try:
+        size, path = U32(1024), ct.create_unicode_buffer(1024)
+        found = kernel.QueryFullProcessImageNameW(PTR(handle), 0, path, ct.byref(size))
+        return os.path.splitext(os.path.basename(path.value))[0] if found else f'pid {pid}'
+    finally:
+        kernel.CloseHandle(PTR(handle))
+
+
+def _interface(pointer, iid):
+    out = PTR()
+    _call(pointer, 0, [ct.POINTER(Guid), ct.POINTER(PTR)], ct.byref(_guid(iid)), ct.byref(out))  # IUnknown::QueryInterface
+    return out
+
+
+class _AppSession:
+    """ISimpleAudioVolume of one audio session, with the owning app's name."""
+
+    def __init__(self, name, playing, volume):
+        self.name, self.playing, self.volume = name, playing, volume
+
+    def read(self):
+        level, muted = ct.c_float(), ct.c_int32()
+        _call(self.volume, 4, [ct.POINTER(ct.c_float)], ct.byref(level))
+        _call(self.volume, 6, [ct.POINTER(ct.c_int32)], ct.byref(muted))
+        return round(level.value * 100), bool(muted.value)
+
+    def write(self, level, muted):
+        if level is not None:
+            _call(self.volume, 3, [ct.c_float, PTR], level / 100, None)
+        if muted is not None:
+            _call(self.volume, 5, [ct.c_int32, PTR], int(muted), None)
+
+
+@contextmanager
+def _app_sessions():
+    """Audio sessions of the default playback device."""
+    # ponytail: default output device only; walk every active endpoint if apps playing elsewhere matter
+    ole = ct.windll.ole32
+    ole.CoInitializeEx(None, 0)
+    enumerator, device, manager, listing, found = PTR(), PTR(), PTR(), PTR(), []
+    try:
+        enumerator = _create('bcde0395-e52f-467c-8e3d-c4579291692e', 'a95664d2-9614-4f35-a746-de8db63617e6')
+        try:
+            _call(enumerator, 4, [U32, U32, ct.POINTER(PTR)], 0, 1, ct.byref(device))  # eRender, eMultimedia
+        except ActionError:
+            raise ActionError('No audio output device is available.') from None
+        _call(device, 3, [ct.POINTER(Guid), U32, PTR, ct.POINTER(PTR)],
+              ct.byref(_guid('77aa99a0-1bd6-484f-8bc7-2c654c9a9b6f')), 23, None, ct.byref(manager))  # IAudioSessionManager2
+        _call(manager, 5, [ct.POINTER(PTR)], ct.byref(listing))  # GetSessionEnumerator
+        count = ct.c_int32()
+        _call(listing, 3, [ct.POINTER(ct.c_int32)], ct.byref(count))
+        for index in range(count.value):
+            control, control2, state, pid = PTR(), PTR(), ct.c_int32(), U32()
+            _call(listing, 4, [ct.c_int32, ct.POINTER(PTR)], index, ct.byref(control))
+            try:
+                _call(control, 3, [ct.POINTER(ct.c_int32)], ct.byref(state))  # GetState: 0 inactive, 1 active, 2 expired
+                if state.value == 2:
+                    continue
+                control2 = _interface(control, 'bfb7ff88-7239-4fc9-8fa2-07c950be9c6d')  # IAudioSessionControl2
+                _call(control2, 14, [ct.POINTER(U32)], ct.byref(pid))  # GetProcessId; 0 is the system sounds session
+                name = _process_name(pid.value) if pid.value else 'System sounds'
+                found.append(_AppSession(name, state.value == 1, _interface(control, '87ce5498-68d6-44e5-9215-6da47ef883d8')))
+            finally:
+                _release(control2)
+                _release(control)
+        yield found
+    finally:
+        for pointer in [session.volume for session in found] + [listing, manager, device, enumerator]:
+            _release(pointer)
+        ole.CoUninitialize()
+
+
+def _app_volumes(match=None, level=None, muted=None):
+    with _app_sessions() as sessions:
+        names = sorted({session.name for session in sessions}, key=str.casefold)
+        hit = None
+        if match is not None:
+            wanted = str(match).strip().casefold()
+            hits = [name for name in names if name.casefold() == wanted] or [name for name in names if wanted in name.casefold()]
+            if len(hits) != 1:
+                raise ActionError(f"No single app in the volume mixer matches '{match}'. Apps there now: {', '.join(names) or 'none'}. "
+                                  'An app appears only once it has played sound.')
+            hit = hits[0]
+            for session in sessions:  # one app can hold several sessions; the mixer moves them together
+                if session.name == hit:
+                    session.write(level, muted)
+        apps = {}
+        for session in sessions:  # separate read, also after a change
+            volume, mute = session.read()
+            if session.name == hit and (level not in (None, volume) or muted not in (None, mute)):
+                raise ActionError(f"{hit} is at {volume}%{' and muted' if mute else ''} after the request; Windows did not apply the change.")
+            row = apps.setdefault(session.name, {'app': session.name, 'volume': volume, 'muted': mute, 'playing': False})
+            row['playing'] = row['playing'] or session.playing
+        if hit:
+            return apps[hit]
+        return {'apps': [apps[name] for name in names],
+                'text': '; '.join(f"{name} {apps[name]['volume']}%{' muted' if apps[name]['muted'] else ''}" for name in names)
+                        or 'No app has played sound yet.'}
+
+
+def list_app_volumes():
+    with ThreadPoolExecutor(1) as pool:  # own COM apartment, like set_volume
+        return pool.submit(_app_volumes).result()
+
+
+def set_app_volume(app, level=None, muted=None):
+    if not str(app or '').strip():
+        raise ActionError('app is required: part of a name from list_app_volumes.')
+    if muted is None:
+        level = _level(level)
+    with ThreadPoolExecutor(1) as pool:
+        return pool.submit(_app_volumes, app, level, muted).result()
+
+
 # ── Brightness (WMI; built-in laptop panels only) ───────────────────────────
 
 def get_brightness():
