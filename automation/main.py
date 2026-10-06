@@ -119,12 +119,27 @@ def inspect_notepad():
     _inspect(window)
 
 
+from automation.core.llm_orchestrator import LLMOrchestrator
 from automation.core.planner import SimplePlanner
+from automation.core.registry import registry
 
 def execute_prompt(prompt: str):
-    """Execute a natural language prompt using the SimplePlanner."""
-    planner = SimplePlanner()
-    plan = planner.plan(prompt)
+    """Execute a natural language prompt using LLMOrchestrator or SimplePlanner fallback."""
+    plan = []
+    try:
+        planner = LLMOrchestrator()
+        plan_result = planner.plan(prompt)
+        plan = plan_result.get("actions", [])
+        if plan_result.get("message") and plan:
+            print(f"\n[AURA Assistant]: {plan_result['message']}")
+    except Exception as e:
+        print(f"[CLI] LLM Orchestrator error ({e})")
+        plan = []
+    
+    if not plan:
+        print("[CLI] Using SimplePlanner fallback...")
+        planner = SimplePlanner()
+        plan = planner.plan(prompt)
     
     if not plan:
         print("Could not understand any actionable steps from the prompt.")
@@ -138,14 +153,22 @@ def execute_prompt(prompt: str):
     print(f"  Prompt: {prompt}")
     print(f"{'='*50}")
     
-    agent = get_agent("notepad") # Hardcoded for now
-    
     for i, step in enumerate(plan):
-        action = step["action"]
-        params = step["params"]
+        action = step.get("action")
+        params = step.get("params", {})
+        agent_name = step.get("agent", "notepad")
         
-        print(f"\n[Step {i+1}] Executing: {action} {params}")
-        log.start_step(action, application=step["agent"])
+        agent = registry.get_agent(agent_name)
+        if not agent:
+            try:
+                agent = get_agent(agent_name)
+            except Exception:
+                print(f"  [FAIL] Error: Unknown agent '{agent_name}'")
+                log.finish("failed")
+                return log
+
+        print(f"\n[Step {i+1}] [{agent.app_name}] Executing: {action} {params}")
+        log.start_step(action, application=agent_name)
         
         result = agent.execute(action, params)
         if result["status"] == "success":

@@ -16,36 +16,39 @@ import time
 
 def set_focus(element) -> bool:
     """
-    Set focus to an element without moving the caret.
-
-    Uses UIA SetFocus which brings the element into focus
-    without altering selection or caret position.
+    Set focus to an element cleanly without mouse movement hanging.
     """
     try:
-        element.set_focus()
-        time.sleep(0.15)
+        from automation.core import window_manager
+        if window_manager.focus_window(element):
+            return True
+
+        try:
+            if hasattr(element, 'set_focus'):
+                element.set_focus()
+        except Exception:
+            pass
         return True
     except Exception as e:
-        print(f"[InputHandler] set_focus failed: {e}")
+        print(f"[InputHandler] set_focus notice: {e}")
         return False
 
 
-def type_text(element, text: str, method: str = "clipboard") -> bool:
+def type_text(element=None, text: str = "", method: str = "clipboard", **kwargs) -> bool:
     """
     Type text at the current caret position.
 
-    Uses clipboard paste (Ctrl+V) as the primary method because Windows 11
-    UWP Notepad has an OS-level key-bounce/repeat bug with simulated hardware
-    keystrokes (which causes stuttered letters like 'TTSALA' or 'IIISH').
-    Clipboard paste is 100% reliable, preserves exact casing, Unicode, and caret position.
-
-    Args:
-        element: UIA element to type into
-        text: The text to type
-        method: 'clipboard' (default and recommended) or 'keystroke'
+    Supports both:
+      type_text(element, text)
+      type_text("text_string")
     """
-    if not set_focus(element):
-        return False
+    if isinstance(element, str) and not text:
+        text = element
+        element = None
+
+    if element is not None:
+        if not set_focus(element):
+            return False
 
     time.sleep(0.1)
 
@@ -69,9 +72,10 @@ def type_text(element, text: str, method: str = "clipboard") -> bool:
 
     # Strategy 3: pywinauto type_keys with safe pause
     try:
-        escaped = _escape_for_type_keys(text)
-        element.type_keys(escaped, with_spaces=True, set_foreground=True, pause=0.05)
-        return True
+        if element is not None:
+            escaped = _escape_for_type_keys(text)
+            element.type_keys(escaped, with_spaces=True, set_foreground=True, pause=0.05)
+            return True
     except Exception as e:
         print(f"[InputHandler] type_keys fallback failed: {e}")
 
@@ -100,20 +104,53 @@ def send_keys(keys: str) -> bool:
         return False
 
 
+def send_hotkey(*keys: str) -> bool:
+    """Send hotkey combination like send_hotkey('ctrl', 'l')."""
+    return send_keys("+".join(keys))
+
+
+def send_key(key: str) -> bool:
+    """Send a single key press like send_key('enter')."""
+    return send_keys(key)
+
+
 def send_key_sequence(element, keys: str) -> bool:
     """
-    Send a key sequence to a specific element using pywinauto.
-
-    Args:
-        element: Target UIA element
-        keys: pywinauto key sequence (e.g., "^s" for Ctrl+S)
+    Send a key sequence or shortcut to a specific element cleanly.
     """
     try:
-        if not set_focus(element):
-            return False
-        element.type_keys(keys)
-        time.sleep(0.2)
-        return True
+        import pyautogui
+        pyautogui.FAILSAFE = False
+
+        if element is not None:
+            set_focus(element)
+
+        # Parse modifiers: ^ -> ctrl, % -> alt, + -> shift
+        key_map = {"^": "ctrl", "%": "alt", "+": "shift"}
+        mods = []
+        clean_key = keys.lower()
+        for char in ["^", "%", "+"]:
+            if char in clean_key:
+                mods.append(key_map[char])
+                clean_key = clean_key.replace(char, "")
+
+        if mods and clean_key:
+            pyautogui.hotkey(*mods, clean_key)
+            time.sleep(0.15)
+            return True
+        elif clean_key and len(clean_key) <= 5:
+            pyautogui.press(clean_key)
+            time.sleep(0.15)
+            return True
+
+        if element is not None:
+            try:
+                element.type_keys(keys, pause=0.02)
+                time.sleep(0.15)
+                return True
+            except Exception:
+                pass
+        return False
     except Exception as e:
         print(f"[InputHandler] send_key_sequence failed: {e}")
         return False
@@ -159,6 +196,7 @@ def _type_via_clipboard(text: str) -> bool:
     try:
         import pyperclip
         import pyautogui
+        pyautogui.FAILSAFE = False
 
         old_clip = None
         try:

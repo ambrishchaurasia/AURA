@@ -32,13 +32,22 @@ def execute_prompt():
         }), 500
 
     # 1. Parse actions via LLM
-    plan_result = planner.plan(prompt)
-    
-    actions = plan_result.get("actions", [])
-    message = plan_result.get("message", "")
-    
-    # We still allow execution if actions exist.
-    # If no actions but we have a message, it's a conversational response!
+    actions = []
+    message = ""
+    if planner:
+        try:
+            plan_result = planner.plan(prompt)
+            actions = plan_result.get("actions", [])
+            message = plan_result.get("message", "")
+        except Exception as e:
+            print(f"[API] LLM planning error: {e}")
+
+    # Fallback to SimplePlanner if LLM produces no actions
+    if not actions:
+        from automation.core.planner import SimplePlanner
+        rule_planner = SimplePlanner()
+        actions = rule_planner.plan(prompt)
+
     if not actions and not message:
         return jsonify({
             "status": "error",

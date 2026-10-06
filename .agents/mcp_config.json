@@ -1,0 +1,17 @@
+{
+    "mcpServers":  {
+                       "aura":  {
+                                    "args":  [
+                                                 "-m",
+                                                 "mcp_server"
+                                             ],
+                                    "env":  {
+                                                "PYTHONUNBUFFERED":  "1",
+                                                "PYTHONPATH":  "C:\\Users\\satvi\\Downloads\\AURA-my-work",
+                                                "PYTHONIOENCODING":  "utf-8"
+                                            },
+                                    "command":  "C:\\Users\\satvi\\Downloads\\AURA-my-work\\automation\\venv\\Scripts\\python.exe",
+                                    "cwd":  "C:\\Users\\satvi\\Downloads\\AURA-my-work"
+                                }
+                   }
+}
