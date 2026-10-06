@@ -52,10 +52,13 @@ class TieredResolver:
                 return el, 2
                 
         # Fallback to searching by logical name directly as a last resort in Tier 2
-        clean_name = logical_name.replace("_", " ")
-        el = element_finder.find_element(window, name_contains=clean_name)
-        if el:
-            return el, 2
+        try:
+            clean_name = logical_name.replace("_", " ")
+            el = element_finder.find_element(window, name=clean_name)
+            if el:
+                return el, 2
+        except Exception:
+            pass
 
         # --- TIER 3: Vision/OCR (Stub) ---
         # In a full implementation, we would screenshot the window and use OCR
