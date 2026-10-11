@@ -33,6 +33,19 @@ Windows desktop and browser automation engine designed for MCP clients (Claude D
 
 ---
 
+## HTTP API
+
+`python -m automation.api` serves `POST /api/execute` on `http://127.0.0.1:5000`. It drives the desktop, so it is locked down by default:
+
+| Variable | Purpose |
+| --- | --- |
+| `AURA_API_TOKEN` | Shared secret every request must send in the `X-AURA-Token` header (401 otherwise). If unset, a random token is generated and printed at startup. |
+| `AURA_ALLOWED_ORIGINS` | Comma-separated front-end origins allowed by CORS, e.g. `http://localhost:5173`. Default: none (same-origin only). |
+
+Flask debug mode is off unless `AURA_DEBUG=1`.
+
+---
+
 ## Claude Desktop Setup
 
 Add to `%APPDATA%\Claude\claude_desktop_config.json`:

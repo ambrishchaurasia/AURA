@@ -1,3 +1,6 @@
+import hmac
+import os
+import secrets
 import time
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -5,8 +8,27 @@ from automation.core.llm_orchestrator import LLMOrchestrator
 from automation.core.registry import registry
 
 app = Flask(__name__)
-# Enable CORS so the React frontend can talk to us
-CORS(app)
+# CORS only for the front-end origins listed in AURA_ALLOWED_ORIGINS (comma-separated).
+# Default: none, so browsers only allow same-origin pages to read responses.
+ALLOWED_ORIGINS = [o.strip() for o in os.environ.get("AURA_ALLOWED_ORIGINS", "").split(",") if o.strip()]
+if ALLOWED_ORIGINS:
+    CORS(app, origins=ALLOWED_ORIGINS)
+
+# Shared secret every request must send in the X-AURA-Token header.
+API_TOKEN = os.environ.get("AURA_API_TOKEN")
+if not API_TOKEN:
+    API_TOKEN = secrets.token_urlsafe(32)
+    os.environ["AURA_API_TOKEN"] = API_TOKEN  # so the debug reloader's child process reuses it
+    print(f"[API] AURA_API_TOKEN not set; generated one for this run: {API_TOKEN}")
+
+@app.before_request
+def require_token():
+    # CORS preflights cannot carry custom headers; they execute nothing.
+    if request.method == "OPTIONS":
+        return None
+    sent = request.headers.get("X-AURA-Token", "")
+    if not hmac.compare_digest(sent.encode(), API_TOKEN.encode()):
+        return jsonify({"error": "Missing or invalid X-AURA-Token"}), 401
 
 # Initialize singletons
 try:
@@ -102,4 +124,5 @@ if __name__ == "__main__":
     print("=======================================")
     print(" AURA Backend API Started on Port 5000")
     print("=======================================")
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    # The Werkzeug debugger allows code execution; opt in with AURA_DEBUG=1 only.
+    app.run(host="127.0.0.1", port=5000, debug=os.environ.get("AURA_DEBUG") == "1")
