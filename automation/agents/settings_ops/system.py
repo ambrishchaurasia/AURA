@@ -98,6 +98,17 @@ def get_volume():
     return set_volume()
 
 
+def _step(direction, amount):
+    """Signed change for 'up' / 'down'; 10 points unless an amount is given."""
+    if direction not in ('up', 'down'):
+        raise ActionError("direction must be 'up' or 'down'.")
+    return (1 if direction == 'up' else -1) * (10 if amount is None else _level(amount))
+
+
+def change_volume(direction, amount=None):
+    return set_volume(level=get_volume()['volume'] + _step(direction, amount))
+
+
 # ── Default playback device (Core Audio enumeration + IPolicyConfig) ────────
 
 class _PropKey(ct.Structure):
@@ -324,6 +335,15 @@ def set_app_volume(app, level=None, muted=None):
         return pool.submit(_app_volumes, app, level, muted).result()
 
 
+def change_app_volume(app, direction, amount=None):
+    step = _step(direction, amount)
+    if not str(app or '').strip():
+        raise ActionError('app is required: part of a name from list_app_volumes.')
+    with ThreadPoolExecutor(1) as pool:
+        current = pool.submit(_app_volumes, app).result()['volume']
+    return set_app_volume(app, level=current + step)
+
+
 # ── Brightness (WMI; built-in laptop panels only) ───────────────────────────
 
 def get_brightness():
@@ -340,6 +360,10 @@ def set_brightness(level):
     if code:
         raise ActionError('This display does not expose brightness control to Windows (external monitors usually do not).')
     return get_brightness()
+
+
+def change_brightness(direction, amount=None):
+    return set_brightness(get_brightness()['brightness'] + _step(direction, amount))
 
 
 # ── Theme ───────────────────────────────────────────────────────────────────

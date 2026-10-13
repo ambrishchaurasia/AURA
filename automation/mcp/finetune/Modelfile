@@ -1,0 +1,14 @@
+# Loads a fine-tuned AURA model into Ollama:  ollama create aura-qwen-0.5b -f Modelfile
+# Put this file next to the GGUF produced by train.pbs and adjust the FROM line to its name.
+FROM ./aura-qwen-0.5B-q8_0.gguf
+# Must match the system prompt in make_dataset.py and Qwen's ChatML format.
+SYSTEM "You are AURA, a Windows PC assistant."
+TEMPLATE """<|im_start|>system
+{{ .System }}<|im_end|>
+<|im_start|>user
+{{ .Prompt }}<|im_end|>
+<|im_start|>assistant
+"""
+PARAMETER stop "<|im_end|>"
+PARAMETER temperature 0
+PARAMETER num_ctx 4096

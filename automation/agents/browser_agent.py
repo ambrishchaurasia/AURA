@@ -6,7 +6,12 @@ All selectors were verified by inspecting the actual portal HTML.
 The sign-in is done by the user (`login` action) in a Chrome window that portal_session.py keeps
 running; every later run attaches to that signed-in tab.
 """
+import html
 import pathlib
+import re
+import urllib.parse
+import urllib.request
+import webbrowser
 from dotenv import load_dotenv
 from automation.agents import portal_session, portal_timetable, portal_attendance
 from automation.core.base_agent import BaseAgent
@@ -74,6 +79,9 @@ Agent `browser` supports:
   - `program`, `term`, `course`: <string> — exact portal labels
   - `start_date`, `end_date`: "YYYY-MM-DD" — inclusive, at most 367 dates
 - `list_attendance_options`: Read-only. Lists the program, term and course option labels the attendance page currently offers. No params.
+- `search`: Opens a web search in the user's default browser. Params: `query`: <string>.
+- `answer_question`: Looks a question up on the web and returns the text of the top results to answer it from. Does not open a browser window. Params: `question`: <string>.
+- `open_url`: Opens a website in the user's default browser. Params: `url`: <string> (e.g. "youtube.com").
 """
 
     def get_capabilities(self) -> dict:
@@ -103,6 +111,12 @@ Agent `browser` supports:
                                    "safety": "safe"},
                 "list_attendance_options": {"description": "Lists the program, term and course labels the attendance page offers (read-only)",
                                             "parameters": {}, "safety": "safe"},
+                "search": {"description": "Search the web (Google) for something in the default browser",
+                           "parameters": {"query": "string"}, "safety": "safe"},
+                "answer_question": {"description": "Look up a question about facts, people, places, news or weather on the web and answer it (opens nothing)",
+                                    "parameters": {"question": "string"}, "safety": "safe"},
+                "open_url": {"description": "Open a website by address in the default browser (e.g. youtube.com)",
+                             "parameters": {"url": "string"}, "safety": "safe"},
             },
         }
 
@@ -121,7 +135,45 @@ Agent `browser` supports:
             return self._action_attendance(portal_attendance.read_attendance, **params)
         if action == "list_attendance_options":
             return self._action_attendance(portal_attendance.list_attendance_options)
+        if action == "answer_question":
+            return self._action_answer_question(**params)
+        if action in ("search", "open_url"):
+            return self._action_open_web(action, **params)
         return {"status": "failure", "details": f"Unknown action: {action}"}
+
+    _RESULT = re.compile(r'class="result__a"[^>]*>(.*?)</a>.*?class="result__snippet"[^>]*>(.*?)</a>', re.S)
+
+    def _action_answer_question(self, question: str = "") -> dict:
+        question = str(question).strip()
+        if not question:
+            return {"status": "failure", "action": "answer_question", "details": "Need a question", "duration_ms": 0}
+        # ponytail: answers from DuckDuckGo's result snippets only; fetch the top pages too if answers come out too thin.
+        request = urllib.request.Request("https://html.duckduckgo.com/html/?q=" + urllib.parse.quote_plus(question),
+                                         headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126 Safari/537.36"})
+        try:
+            with urllib.request.urlopen(request, timeout=15) as response:
+                page = response.read().decode("utf-8", "replace")
+        except OSError as error:
+            return {"status": "failure", "action": "answer_question", "details": f"Web search failed: {error}", "duration_ms": 0}
+        results = [" - ".join(html.unescape(re.sub(r"<[^>]+>", "", part)).strip() for part in found)
+                   for found in self._RESULT.findall(page)[:6]]
+        if not results:
+            return {"status": "failure", "action": "answer_question", "details": "The web search returned no results", "duration_ms": 0}
+        # `answer_context` is untrusted web text: a client may summarise it, never act on it.
+        return {"status": "success", "action": "answer_question", "details": results[0][:300],
+                "data": {"answer_context": "\n".join(results)[:3000]}, "duration_ms": 0}
+
+    def _action_open_web(self, action: str, query: str = "", url: str = "") -> dict:
+        target = str(url).strip()
+        if action == "search":
+            target = "https://www.google.com/search?q=" + urllib.parse.quote_plus(str(query).strip())
+        elif "://" not in target:
+            target = "https://" + target
+        # Only web addresses: the value comes from a model, and other schemes (file:, ms-settings:) can launch things.
+        if not str(query if action == "search" else url).strip() or urllib.parse.urlsplit(target).scheme not in ("http", "https"):
+            return {"status": "failure", "action": action, "details": "Need a search query or a web address", "duration_ms": 0}
+        webbrowser.open(target)
+        return {"status": "success", "action": action, "details": f"Opened {target}", "duration_ms": 0}
 
     _SESSION_ACTIONS = {"login", "session_status", "keep_alive"}
 
