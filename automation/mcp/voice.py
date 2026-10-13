@@ -177,11 +177,8 @@ def spoken_reply(request, steps, llm=slm_client.reply):
     if not ok or reply in ("Done.", "Nothing was done.") or steps[-1]["call"].startswith("browser.answer_question"):
         return reply, ok
     try:
-        reply = llm(f'The user said to their PC assistant: "{request}"\nThe PC did: {steps[-1]["call"]}\nResult: {steps[-1]["details"][:600]}\n\n'
-                    "Tell the user the result in one short, friendly spoken sentence. Plain words, no technical terms, "
-                    "no field names. Keep every number exactly as given and add nothing that is not in the result.",
-                    {"type": "object", "properties": {"reply": {"type": "string"}}, "required": ["reply"],
-                     "additionalProperties": False})["reply"].strip() or reply
+        reply = llm(slm_client.reply_prompt(request, steps[-1]["call"], steps[-1]["details"]),
+                    slm_client.REPLY_SCHEMA)["reply"].strip() or reply
     except Exception as error:  # the raw result is still better than silence
         print(f"Could not rephrase the reply: {error!r}")
     return reply, ok
@@ -251,6 +248,7 @@ async def serve(push_to_talk=False, enabled=lambda: True):
     transcribe = load_transcriber()
     with contextlib.suppress(Exception):  # so the first reply is not delayed; say() reports a missing voice itself
         load_voice()
+    slm_client.server_url()  # start the model now rather than on the first command
     async with slm_client.connect() as call_tool:
         if push_to_talk:
             return await listen(call_tool, record, transcribe)

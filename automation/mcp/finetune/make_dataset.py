@@ -1,4 +1,4 @@
-"""Builds fine-tuning data for the three questions slm_client asks (split, choose, parameters).
+"""Builds fine-tuning data for the questions slm_client asks (split, choose, parameters, spoken reply).
 
     python -m automation.mcp.finetune.make_dataset train.jsonl val.jsonl
 
@@ -12,9 +12,10 @@ import sys
 
 from automation.core.registry import registry
 from automation.mcp import slm_client, slm_eval
+from automation.mcp.finetune import replies
 from automation.mcp.finetune.commands import COMMANDS, JOINERS, PREFIXES, SLOTS, SUFFIXES
 
-SYSTEM = "You are AURA, a Windows PC assistant."
+SYSTEM = slm_client.SYSTEM
 # Sequences people actually say in one breath; the rest of the multi-step data is random pairs.
 CHAINS = [["notepad.open", "notepad.type"], ["notepad.open", "notepad.type", "notepad.save_as"], ["notepad.type", "notepad.save"],
           ["explorer.open", "explorer.create_folder"], ["explorer.navigate", "explorer.create_file"], ["notepad.save", "notepad.close"],
@@ -82,7 +83,7 @@ def examples(keys, catalog, info, rng):
         history = history + [f"{key} {json.dumps(sent)} -> {rng.choice(['Done', 'ok', '', 'success'])}"]
 
 
-def build(seed, singles, multis):
+def build(seed, singles, multis, spoken):
     rng = random.Random(seed)
     catalog, info = catalog_and_info()
     missing, extra = set(catalog) - set(COMMANDS), set(COMMANDS) - set(catalog)
@@ -92,7 +93,8 @@ def build(seed, singles, multis):
     keys = list(catalog)
     requests = [[keys[i % len(keys)]] for i in range(singles)]  # every action equally often
     requests += [rng.choice(CHAINS) if rng.random() < 0.4 else rng.sample(keys, rng.choice([2, 2, 2, 3])) for _ in range(multis)]
-    rows = []
+    rows = [{"messages": [{"role": "system", "content": SYSTEM}, {"role": "user", "content": prompt},
+                          {"role": "assistant", "content": json.dumps(answer)}]} for prompt, answer in replies.examples(rng, spoken)]
     for request in requests:
         for prompt, answer in examples(request, catalog, info, rng):
             said = prompt.split("\n")[1] if prompt.startswith("A user gave") else ""
@@ -105,8 +107,8 @@ def build(seed, singles, multis):
 
 
 if __name__ == "__main__":
-    for path, seed, singles, multis in ((sys.argv[1], 0, 3000, 1500), (sys.argv[2], 1, 150, 75)):
-        rows = build(seed, singles, multis)
+    for path, seed, singles, multis, spoken in ((sys.argv[1], 0, 3000, 1500, 3000), (sys.argv[2], 1, 150, 75, 150)):
+        rows = build(seed, singles, multis, spoken)
         with open(path, "w", encoding="utf-8") as out:
             out.writelines(json.dumps(row) + "\n" for row in rows)
         print(f"{path}: {len(rows)} examples")

@@ -16,7 +16,7 @@ import time
 from automation.core.registry import registry
 from automation.mcp import slm_client
 
-MODELS = ["gemma3:270m", "qwen2.5:0.5b", "qwen2.5:1.5b", "llama3.2:3b"]
+MODELS = ["aura-qwen-0.5b", "aura-qwen-1.5b", "llama3.2:3b"]
 
 # (command, [(agent, action or alternatives, params that must be present)])
 TASKS = [

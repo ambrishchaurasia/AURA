@@ -93,7 +93,8 @@ for epoch in range(args.epochs):
 model.eval()
 right = {}
 for prompt, _, expected in val[:400]:
-    kind = "split" if '"steps"' in expected else "choose" if '"choice"' in expected else "params"
+    kind = next((name for name, key in (("split", '"steps"'), ("choose", '"choice"'), ("reply", '"reply"'), ("answer", '"answer"'))
+                 if expected.startswith("{" + key)), "params")
     with torch.no_grad(), torch.autocast("cuda", dtype=torch.bfloat16):
         out = model.generate(input_ids=torch.tensor([prompt]).cuda(), max_new_tokens=200, do_sample=False,
                              eos_token_id=tokenizer.convert_tokens_to_ids("<|im_end|>"), pad_token_id=tokenizer.pad_token_id)

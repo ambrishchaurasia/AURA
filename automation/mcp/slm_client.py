@@ -4,34 +4,105 @@
 
 The model never writes a tool call freehand and never decides when to stop. It answers small
 questions, each under a JSON schema that the model server enforces: split the request into steps,
-then per step pick one action from the full list and fill in its parameter values. So any model an
-OpenAI-compatible server (Ollama, LM Studio, llama.cpp) can load produces well-formed calls.
-Everything else (discovery, the nested params_json string, the loop) is done here in plain code.
+then per step pick one action from the full list and fill in its parameter values. So any model
+produces well-formed calls. Everything else (discovery, the nested params_json string, the loop)
+is done here in plain code.
+
+By default AURA runs the model itself with the bundled llama.cpp server (started hidden on first
+use, stopped when AURA exits). Set AURA_SLM_URL to use an OpenAI-compatible server you run
+yourself instead (Ollama, LM Studio).
 """
 import argparse
 import asyncio
+import atexit
 import contextlib
 import functools
 import json
 import os
+import pathlib
+import socket
+import subprocess
 import sys
+import time
 import urllib.request
 
-URL = os.environ.get("AURA_SLM_URL", "http://127.0.0.1:11434/v1")  # Ollama's default
-MODEL = os.environ.get("AURA_SLM_MODEL", "llama3.2:3b")
-# Model for free-text sentences (web answers, spoken replies). A model fine-tuned for routing writes poor
-# prose, so pair it with a stock one here. Default: the same model.
+URL = os.environ.get("AURA_SLM_URL")  # e.g. http://127.0.0.1:11434/v1 for Ollama; unset: the bundled llama.cpp
+MODEL = os.environ.get("AURA_SLM_MODEL", "aura-qwen-0.5b")  # fine-tuned for AURA; install.bat downloads it
+# Model for free-text sentences (web answers, spoken replies). Default: the same model.
 REPLY_MODEL = os.environ.get("AURA_REPLY_MODEL") or MODEL
+DATA = pathlib.Path(os.environ.get("AURA_DATA_DIR") or pathlib.Path(os.environ.get("LOCALAPPDATA", ".")) / "AURA")
+SYSTEM = "You are AURA, a Windows PC assistant."  # the fine-tuned models were trained with this system prompt
 ANSWER_SCHEMA = {"type": "object", "properties": {"answer": {"type": "string"}},
                  "required": ["answer"], "additionalProperties": False}
+
+_servers = {}  # model name -> base URL of the llama.cpp server AURA started for it
+
+
+def model_file(model):
+    """The GGUF for `model`: a path, or the start of a file name in AURA's models folder (aura-qwen-0.5b -> aura-qwen-0.5B-q8_0.gguf)."""
+    if pathlib.Path(model).is_file():
+        return pathlib.Path(model)
+    found = sorted(path for path in (DATA / "models").glob("*.gguf") if path.name.lower().startswith(model.lower()))
+    if not found:
+        raise FileNotFoundError(f"No model file for '{model}' in {DATA / 'models'}. Run install.bat, or set AURA_SLM_URL to your own server.")
+    return found[0]
+
+
+def server_url(model=MODEL):
+    """Base URL to ask `model` at. Starts AURA's own llama.cpp server for it the first time."""
+    if URL:
+        return URL
+    if model not in _servers:
+        exe = DATA / "llama.cpp" / "llama-server.exe"
+        if not exe.is_file():
+            raise FileNotFoundError(f"{exe} is missing. Run install.bat, or set AURA_SLM_URL to your own server.")
+        with socket.socket() as probe:  # any free port, so two AURA processes do not collide
+            probe.bind(("127.0.0.1", 0))
+            port = probe.getsockname()[1]
+        log = open(DATA / "llama-server.log", "w")
+        server = subprocess.Popen(
+            [str(exe), "-m", str(model_file(model)), "--host", "127.0.0.1", "--port", str(port),
+             "-ngl", "99", "-c", "8192", "-np", "1"],
+            stdout=log, stderr=log, stdin=subprocess.DEVNULL, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        atexit.register(server.terminate)
+        _kill_with_parent(server)
+        deadline = time.monotonic() + 120
+        while True:
+            try:
+                urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=2).close()
+                break
+            except OSError:
+                if server.poll() is not None or time.monotonic() > deadline:
+                    raise RuntimeError(f"The model server did not start; see {DATA / 'llama-server.log'}") from None
+                time.sleep(0.3)
+        _servers[model] = f"http://127.0.0.1:{port}/v1"
+    return _servers[model]
+
+
+def _kill_with_parent(process):
+    """Ties `process` to this one, so it cannot outlive AURA even if AURA is killed."""
+    try:
+        import win32api
+        import win32con
+        import win32job
+        job = win32job.CreateJobObject(None, "")
+        limits = win32job.QueryInformationJobObject(job, win32job.JobObjectExtendedLimitInformation)
+        limits["BasicLimitInformation"]["LimitFlags"] = win32job.JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+        win32job.SetInformationJobObject(job, win32job.JobObjectExtendedLimitInformation, limits)
+        handle = win32api.OpenProcess(win32con.PROCESS_ALL_ACCESS, False, process.pid)
+        win32job.AssignProcessToJobObject(job, handle)
+        process._aura_job = job  # the job closes, and kills the server, when this process ends
+    except Exception as error:  # still stopped by atexit on a normal exit
+        print(f"Could not tie the model server to AURA: {error!r}", file=sys.stderr)
 
 
 def ask(question, schema, model=MODEL):
     """One completion constrained to `schema`; returns the parsed JSON object."""
-    body = {"model": model, "temperature": 0, "messages": [{"role": "user", "content": question}],
+    body = {"model": model, "temperature": 0,
+            "messages": [{"role": "system", "content": SYSTEM}, {"role": "user", "content": question}],
             "response_format": {"type": "json_schema",
                                 "json_schema": {"name": "answer", "strict": True, "schema": schema}}}
-    req = urllib.request.Request(URL + "/chat/completions", json.dumps(body).encode(),
+    req = urllib.request.Request(server_url(model) + "/chat/completions", json.dumps(body).encode(),
                                  {"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=300) as response:
         return json.loads(json.load(response)["choices"][0]["message"]["content"])
@@ -109,6 +180,17 @@ def answer_prompt(task, text):
     return (f"The user asked: {task}\n\nText found on the web:\n{text}\n\n"
             "Answer the user in one or two short sentences using only this text. "
             "If the text does not contain the answer, say you could not find it.")
+
+
+REPLY_SCHEMA = {"type": "object", "properties": {"reply": {"type": "string"}}, "required": ["reply"],
+                "additionalProperties": False}
+
+
+def reply_prompt(request, call, details):
+    """Asks for an agent's terse result ("volume: 30, muted: False") as something to say aloud."""
+    return (f'The user said to their PC assistant: "{request}"\nThe PC did: {call}\nResult: {details[:600]}\n\n'
+            "Tell the user the result in one short, friendly spoken sentence. Plain words, no technical terms, "
+            "no field names. Keep every number exactly as given and add nothing that is not in the result.")
 
 
 async def run(task, call_tool, llm=ask, confirm=input, max_steps=8, reply_llm=None):
