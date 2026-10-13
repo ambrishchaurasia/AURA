@@ -157,22 +157,43 @@ def load_transcriber():
     return transcribe
 
 
+SORRY = "Sorry, that didn't work."
+
+
 def outcome(steps):
     """(sentence to show and speak, whether it went well) for the steps slm_client.run() returned."""
     if not steps or steps[-1]["status"] == "skipped":
         return "Nothing was done.", True
     last = steps[-1]
     if last["status"] == "failure":
-        return f"That failed. {last['details'][:200]}", False
+        print(f"Failed: {last['call']} -> {last['details']}")  # the full reason goes to the log, not the user's ears
+        return SORRY, False
     return last["details"][:200] or "Done.", True
 
 
-async def act(text, call_tool, run, confirm, show, say, chime):
+def spoken_reply(request, steps, llm=slm_client.ask):
+    """The last step's result as one natural sentence; agents report in terse technical form ("volume: 30, muted: False")."""
+    reply, ok = outcome(steps)
+    if not ok or reply in ("Done.", "Nothing was done.") or steps[-1]["call"].startswith("browser.answer_question"):
+        return reply, ok
+    try:
+        reply = llm(f'The user said to their PC assistant: "{request}"\nThe PC did: {steps[-1]["call"]}\nResult: {steps[-1]["details"][:600]}\n\n'
+                    "Tell the user the result in one short, friendly spoken sentence. Plain words, no technical terms, "
+                    "no field names. Keep every number exactly as given and add nothing that is not in the result.",
+                    {"type": "object", "properties": {"reply": {"type": "string"}}, "required": ["reply"],
+                     "additionalProperties": False})["reply"].strip() or reply
+    except Exception as error:  # the raw result is still better than silence
+        print(f"Could not rephrase the reply: {error!r}")
+    return reply, ok
+
+
+async def act(text, call_tool, run, confirm, show, say, chime, reply_for=spoken_reply):
     show(text)
     try:
-        reply, ok = outcome(await run(text, call_tool, confirm=confirm))
+        reply, ok = reply_for(text, await run(text, call_tool, confirm=confirm))
     except Exception as error:  # e.g. the model server is not running; keep listening
-        reply, ok = f"Could not run that: {error}", False
+        print(f"Could not run that: {error!r}")
+        reply, ok = SORRY, False
     show(reply, done=True)
     if not ok or reply == "Done.":
         chime(ok)
@@ -184,17 +205,17 @@ def show(text, done=False):
     print(("-> " if done else "Heard: ") + text)
 
 
-async def listen(call_tool, record, transcribe, run=slm_client.run, wait=input, say=say, chime=chime):
+async def listen(call_tool, record, transcribe, run=slm_client.run, wait=input, say=say, chime=chime, reply_for=spoken_reply):
     while wait("\nPress Enter and speak (q to quit): ").strip().lower() != "q":
         text = transcribe(record()).strip()
         if text:
-            await act(text, call_tool, run, input, show, say, chime)
+            await act(text, call_tool, run, input, show, say, chime, reply_for)
         else:
             print("Heard nothing.")
 
 
 async def listen_for_wake_word(call_tool, blocks, transcribe, run=slm_client.run, show=show, say=say, chime=chime,
-                               flush=flush, enabled=lambda: True, threshold=THRESHOLD):
+                               flush=flush, enabled=lambda: True, threshold=THRESHOLD, reply_for=spoken_reply):
     heard = utterances(blocks, threshold)
 
     def confirm(prompt):
@@ -219,7 +240,7 @@ async def listen_for_wake_word(call_tool, blocks, transcribe, run=slm_client.run
             show(command or "Listening…")
             chime()
         if command:
-            await act(command, call_tool, run, confirm, show, say, chime)
+            await act(command, call_tool, run, confirm, show, say, chime, reply_for)
         elif text and not match:
             print(f"(ignored: {text})")
         if match or command:

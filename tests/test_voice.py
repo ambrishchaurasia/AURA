@@ -7,6 +7,7 @@ from automation.mcp import voice
 
 QUIET, LOUD = np.zeros(voice.BLOCK, dtype="float32"), np.full(voice.BLOCK, 0.2, dtype="float32")
 DONE = [{"call": "x.y {}", "status": "success", "details": ""}]
+PLAIN = lambda request, steps: voice.outcome(steps)  # no model call to rephrase replies
 
 
 def wake_loop(heard, run, **kwargs):
@@ -15,7 +16,7 @@ def wake_loop(heard, run, **kwargs):
     asyncio.run(voice.listen_for_wake_word(
         "tool", ([LOUD] + [QUIET] * 8) * len(heard), lambda audio: next(transcripts), run=run,
         show=lambda text, done=False: captions.append(text), say=spoken.append,
-        chime=lambda ok=True: chimes.append(ok), flush=lambda: None, threshold=0.01, **kwargs))
+        chime=lambda ok=True: chimes.append(ok), flush=lambda: None, threshold=0.01, reply_for=PLAIN, **kwargs))
     return spoken, chimes, captions
 
 
@@ -31,7 +32,7 @@ def test_push_to_talk_runs_heard_commands_and_ignores_silence():
     heard = iter([" turn bluetooth off ", "  "])
     ran = []
     asyncio.run(voice.listen("tool", record=lambda: b"audio", transcribe=lambda audio: next(heard), run=recorder(ran),
-                             wait=lambda prompt: next(keys), say=lambda text: None, chime=lambda ok=True: None))
+                             wait=lambda prompt: next(keys), say=lambda text: None, chime=lambda ok=True: None, reply_for=PLAIN))
     assert ran == ["turn bluetooth off"]
 
 
@@ -62,7 +63,7 @@ def test_outcome_is_spoken_and_plain_success_only_chimes():
     spoken, chimes, _ = wake_loop(["Hey Aura, battery"], recorder([], [{"call": "c", "status": "success", "details": "80 percent"}]))
     assert spoken == ["80 percent"] and chimes == [True]
     spoken, chimes, _ = wake_loop(["Hey Aura, wifi"], recorder([], [{"call": "c", "status": "failure", "details": "No Wi-Fi radio"}]))
-    assert spoken == ["That failed. No Wi-Fi radio"] and chimes == [True, False]
+    assert spoken == ["Sorry, that didn't work."] and chimes == [True, False]  # the reason is logged, not read out
 
 
 def test_risky_action_is_confirmed_by_voice():
@@ -76,3 +77,24 @@ def test_risky_action_is_confirmed_by_voice():
     assert answers == ["n", "y"]
     assert spoken == ["Should I run explorer delete? Say yes or no.", "Nothing was done.",
                       "Should I run explorer delete? Say yes or no.", "Deleted 1 item"]
+
+
+def test_technical_results_are_rephrased_but_failures_and_web_answers_are_not():
+    asked = []
+
+    def llm(question, schema):
+        asked.append(question)
+        return {"reply": "Your volume is now at 30."}
+
+    step = {"call": 'settings.change_volume {"direction": "up"}', "status": "success", "details": "volume: 30, muted: False"}
+    assert voice.spoken_reply("turn it up", [step], llm) == ("Your volume is now at 30.", True)
+    assert "volume: 30, muted: False" in asked[0]
+    assert voice.spoken_reply("x", [{**step, "status": "failure"}], llm) == (voice.SORRY, False)
+    assert voice.spoken_reply("x", [{**step, "call": "browser.answer_question {}", "details": "Frank Herbert."}], llm)[0] == "Frank Herbert."
+    assert voice.spoken_reply("x", [{**step, "details": ""}], llm)[0] == "Done."
+    assert len(asked) == 1
+
+    def broken(question, schema):
+        raise OSError("model server down")
+
+    assert voice.spoken_reply("turn it up", [step], broken)[0] == "volume: 30, muted: False"

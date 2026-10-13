@@ -138,7 +138,9 @@ async def run(task, call_tool, llm=ask, confirm=input, max_steps=8):
                                                          "params_json": json.dumps(params)})
         try:
             data = json.loads(result)
-            status, details = data.get("status", "success"), str(data.get("details", ""))
+            # Some read-only actions report only structured data; keep it so the caller has something to say.
+            status = data.get("status", "success")
+            details = str(data.get("details") or "") or (json.dumps(data["data"])[:600] if data.get("data") else "")
             # Web text is only ever summarised here; it cannot add steps, so a hostile page cannot trigger actions.
             context = (data.get("data") or {}).get("answer_context")
             if status == "success" and context:
