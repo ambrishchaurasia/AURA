@@ -19,6 +19,9 @@ import urllib.request
 
 URL = os.environ.get("AURA_SLM_URL", "http://127.0.0.1:11434/v1")  # Ollama's default
 MODEL = os.environ.get("AURA_SLM_MODEL", "llama3.2:3b")
+# Model for free-text sentences (web answers, spoken replies). A model fine-tuned for routing writes poor
+# prose, so pair it with a stock one here. Default: the same model.
+REPLY_MODEL = os.environ.get("AURA_REPLY_MODEL") or MODEL
 ANSWER_SCHEMA = {"type": "object", "properties": {"answer": {"type": "string"}},
                  "required": ["answer"], "additionalProperties": False}
 
@@ -32,6 +35,10 @@ def ask(question, schema, model=MODEL):
                                  {"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=300) as response:
         return json.loads(json.load(response)["choices"][0]["message"]["content"])
+
+
+def reply(question, schema):
+    return ask(question, schema, model=REPLY_MODEL)
 
 
 def choose(llm, question, options):
@@ -104,11 +111,12 @@ def answer_prompt(task, text):
             "If the text does not contain the answer, say you could not find it.")
 
 
-async def run(task, call_tool, llm=ask, confirm=input, max_steps=8):
+async def run(task, call_tool, llm=ask, confirm=input, max_steps=8, reply_llm=None):
     """Runs `task` one action per step; returns [{"call", "status", "details"}].
 
     `call_tool(name, arguments) -> str` is the only link to the MCP server.
     """
+    reply_llm = reply_llm or (reply if llm is ask else llm)
     agents = json.loads(await call_tool("aura_list_agents", {}))["agents"]
     info = {a: json.loads(await call_tool("aura_get_agent_info", {"agent_name": a})) for a in agents}
     catalog = {f"{a}.{name}": spec for a in agents for name, spec in info[a]["actions"].items()}
@@ -144,7 +152,7 @@ async def run(task, call_tool, llm=ask, confirm=input, max_steps=8):
             # Web text is only ever summarised here; it cannot add steps, so a hostile page cannot trigger actions.
             context = (data.get("data") or {}).get("answer_context")
             if status == "success" and context:
-                details = llm(answer_prompt(task, context), ANSWER_SCHEMA)["answer"]
+                details = reply_llm(answer_prompt(task, context), ANSWER_SCHEMA)["answer"]
         except (ValueError, AttributeError):  # the server's plain-text errors
             status, details = ("failure" if result.startswith("Error") else "success"), " ".join(result.split())
         done.append({"call": call, "status": status, "details": details})

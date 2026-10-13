@@ -171,7 +171,7 @@ def outcome(steps):
     return last["details"][:200] or "Done.", True
 
 
-def spoken_reply(request, steps, llm=slm_client.ask):
+def spoken_reply(request, steps, llm=slm_client.reply):
     """The last step's result as one natural sentence; agents report in terse technical form ("volume: 30, muted: False")."""
     reply, ok = outcome(steps)
     if not ok or reply in ("Done.", "Nothing was done.") or steps[-1]["call"].startswith("browser.answer_question"):

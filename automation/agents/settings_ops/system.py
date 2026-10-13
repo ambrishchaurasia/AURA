@@ -102,7 +102,7 @@ def _step(direction, amount):
     """Signed change for 'up' / 'down'; 10 points unless an amount is given."""
     if direction not in ('up', 'down'):
         raise ActionError("direction must be 'up' or 'down'.")
-    return (1 if direction == 'up' else -1) * (10 if amount is None else _level(amount))
+    return (1 if direction == 'up' else -1) * (_level(amount) if amount else 10)  # 0 would be a no-op
 
 
 def change_volume(direction, amount=None):

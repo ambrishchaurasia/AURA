@@ -43,6 +43,7 @@ Windows desktop and browser automation engine designed for MCP clients (Claude D
 | --- | --- |
 | `AURA_SLM_URL` | Base URL of the model server. Default: `http://127.0.0.1:11434/v1` (Ollama). |
 | `AURA_SLM_MODEL` | Model name on that server (or pass `--model`). Default: `llama3.2:3b`. |
+| `AURA_REPLY_MODEL` | Model that writes sentences (web answers, spoken replies). Default: same as `AURA_SLM_MODEL`. Set it to a stock model such as `llama3.2:3b` when `AURA_SLM_MODEL` is a fine-tuned routing model, which writes poor prose. |
 
 `python -m automation.mcp.slm_eval [model ...]` scores models on fixed commands without touching the desktop.
 

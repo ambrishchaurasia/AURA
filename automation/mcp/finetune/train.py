@@ -20,7 +20,7 @@ parser.add_argument("--val", required=True)
 parser.add_argument("--out", required=True)
 parser.add_argument("--epochs", type=int, default=2)
 parser.add_argument("--lr", type=float, default=2e-4)
-parser.add_argument("--batch-tokens", type=int, default=16000, help="padded tokens per batch; lower it if the GPU runs out of memory")
+parser.add_argument("--batch-tokens", type=int, default=8000, help="padded tokens per batch; lower it if the GPU runs out of memory")
 args = parser.parse_args()
 
 random.seed(0)
