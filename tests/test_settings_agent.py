@@ -120,6 +120,22 @@ def test_app_volume_changes_one_app_and_reads_back(monkeypatch):
     assert stuck['status'] == 'failure' and 'did not apply' in stuck['details']
     assert agent.execute('set_app_volume', {'app': 'chrome'})['status'] == 'failure'  # no level
     assert agent.execute('set_app_volume', {'app': ' ', 'level': 10})['status'] == 'failure'
+    assert agent.execute('change_app_volume', {'app': 'chrome', 'direction': 'down'})['data']['volume'] == 20
+    assert agent.execute('change_app_volume', {'app': 'chrome', 'direction': 'down', 'amount': 50})['data']['volume'] == 0  # clamped
+    assert agent.execute('change_app_volume', {'app': 'chrome', 'direction': 'sideways'})['status'] == 'failure'
+
+
+def test_volume_and_brightness_change_relative_to_the_current_level(monkeypatch):
+    levels = {'volume': 40, 'brightness': 95}
+    monkeypatch.setattr(system, 'set_volume', lambda level=None, muted=None: levels.update(
+        volume=levels['volume'] if level is None else system._level(level)) or {'volume': levels['volume'], 'muted': False})
+    monkeypatch.setattr(system, 'get_brightness', lambda: {'brightness': levels['brightness']})
+    monkeypatch.setattr(system, 'set_brightness', lambda level: levels.update(brightness=system._level(level)) or dict(levels))
+    agent = SettingsAgent()
+    assert agent.execute('change_volume', {'direction': 'down'})['data']['volume'] == 30
+    assert agent.execute('change_volume', {'direction': 'up', 'amount': 25})['data']['volume'] == 55
+    assert agent.execute('change_brightness', {'direction': 'up'})['data']['brightness'] == 100  # clamped
+    assert agent.execute('change_volume', {})['status'] == 'failure'
 
 
 FAKE_TASKS = [{'name': 'Choose a power plan', 'group': 'Power Options', 'path': 'P1'},

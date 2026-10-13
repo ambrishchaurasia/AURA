@@ -1,0 +1,25 @@
+#!/bin/bash
+#PBS -N aura-ft
+#PBS -q gpu
+#PBS -l select=1:ncpus=8:ngpus=1:mem=48gb
+#PBS -l walltime=03:00:00
+#PBS -j oe
+#PBS -o aura-ft.log
+
+# Fine-tunes both base models and converts each to a GGUF file Ollama can load.
+# Expects ~/aura-ft with train.py, data/, models/ and a llama.cpp checkout (see README).
+set -e
+cd ~/aura-ft
+module load cuda/12.8 2>/dev/null || true
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate aura-ft
+export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
+# Use the emptiest GPU unless the scheduler already assigned one.
+[ -n "$CUDA_VISIBLE_DEVICES" ] || export CUDA_VISIBLE_DEVICES=$(nvidia-smi --query-gpu=index,memory.used --format=csv,noheader,nounits | sort -t, -k2 -n | head -1 | cut -d, -f1)
+nvidia-smi --query-gpu=index,name,memory.used --format=csv,noheader -i "$CUDA_VISIBLE_DEVICES"
+
+for size in ${SIZES:-0.5B 1.5B}; do
+    python train.py --base models/qwen2.5-$size --train data/train.jsonl --val data/val.jsonl --out out/aura-qwen-$size
+    PYTHONPATH=llama.cpp/gguf-py python llama.cpp/convert_hf_to_gguf.py out/aura-qwen-$size --outfile out/aura-qwen-$size-q8_0.gguf --outtype q8_0
+done
+echo ALL_DONE
